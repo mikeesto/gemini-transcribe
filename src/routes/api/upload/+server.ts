@@ -3,6 +3,7 @@ import { GoogleAIFileManager, FileState } from '@google/generative-ai/server';
 import { file as tempFile } from 'tmp-promise';
 import { writeFile } from 'fs/promises';
 import { env } from '$env/dynamic/private';
+import { env as publicEnv } from '$env/dynamic/public';
 import { safetySettings } from '$lib/index';
 
 async function* streamChunks(stream: ReadableStream<Uint8Array>) {
@@ -44,7 +45,7 @@ export async function POST({ request }) {
 	const genAI = new GoogleGenerativeAI(env.GOOGLE_API_KEY);
 
 	const model = genAI.getGenerativeModel({
-		model: 'gemini-2.0-flash-exp',
+		model: publicEnv.PUBLIC_GOOGLE_MODEL,
 		safetySettings,
 		generationConfig: { responseMimeType: 'application/json' }
 	});
@@ -70,8 +71,9 @@ export async function POST({ request }) {
 			}
 		},
 		{
-			text: `Generate a transcript for this file. Always use the format mm:ss for the time. Group similar text together rather than timestamping every line. Respond with the transcript in the form of this JSON schema:
-     [{"timestamp": "00:00", "speaker": "Speaker 1", "text": "Today I will be talking about the importance of AI in the modern world."},{"timestamp": "01:00", "speaker": "Speaker 1", "text": "Has AI has revolutionized the way we live and work?"}]`
+			text: `Generate a transcript for this file. Always use the format mm:ss for the time. Group similar text together rather than timestamping every line. Respond with the transcript in the form of this NDJSON-style schema:
+			{"timestamp": "00:00", "speaker": "Speaker 1", "text": "Today I will be talking about the importance of AI in the modern world."}
+			{"timestamp": "01:00", "speaker": "Speaker 1", "text": "Has AI has revolutionized the way we live and work?"}`
 		}
 	]);
 

@@ -262,6 +262,14 @@ export async function POST(event) {
 		record.count++;
 		requests.set(ip, record);
 
+		// Delete the file
+		try {
+			await ai.files.delete({ name: uploadResult.name! });
+		} catch (error) {
+			console.error('Error deleting uploaded file:', error);
+			// Don't throw - still return the transcription even if deletion fails
+		}
+
 		const nodeStream = Readable.from(streamChunks(result));
 		const webStream = Readable.toWeb(nodeStream) as ReadableStream<Uint8Array>;
 

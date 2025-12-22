@@ -7,10 +7,9 @@ import { safetySettings } from '$lib/index';
 import { Readable } from 'node:stream';
 import Busboy from 'busboy';
 
-// Rate limiting disabled for now
-// const requests = new Map<string, { count: number; expires: number }>();
-// const RATE_LIMIT = 5;
-// const DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+const requests = new Map<string, { count: number; expires: number }>();
+const RATE_LIMIT = 5;
+const DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 
 async function* streamChunks(asyncGenerator: AsyncIterableIterator<{ text?: string }>) {
 	for await (const chunk of asyncGenerator) {
@@ -56,22 +55,21 @@ async function generateTranscriptWithModel(
 }
 
 export async function POST(event) {
-	// Rate limiting disabled for now
-	// const ip = event.getClientAddress();
-	// const now = Date.now();
-	// let record = requests.get(ip);
+	const ip = event.getClientAddress();
+	const now = Date.now();
+	let record = requests.get(ip);
 
-	// if (!record || record.expires < now) {
-	// 	record = { count: 0, expires: now + DURATION };
-	// 	requests.set(ip, record);
-	// }
+	if (!record || record.expires < now) {
+		record = { count: 0, expires: now + DURATION };
+		requests.set(ip, record);
+	}
 
-	// if (record.count >= RATE_LIMIT) {
-	// 	return new Response(
-	// 		'This free service supports up to 5 requests per user per day. Please try again tomorrow.',
-	// 		{ status: 429 }
-	// 	);
-	// }
+	if (record.count >= RATE_LIMIT) {
+		return new Response(
+			'This free service supports up to 5 requests per user per day. I am trying to support more soon. Please try again tomorrow.',
+			{ status: 429 }
+		);
+	}
 
 	const { request } = event;
 
@@ -261,9 +259,8 @@ export async function POST(event) {
 			throw lastError || new Error('All transcription models failed');
 		}
 
-		// Rate limiting disabled for now
-		// record.count++;
-		// requests.set(ip, record);
+		record.count++;
+		requests.set(ip, record);
 
 		const nodeStream = Readable.from(streamChunks(result));
 		const webStream = Readable.toWeb(nodeStream) as ReadableStream<Uint8Array>;

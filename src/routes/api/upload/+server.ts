@@ -226,35 +226,39 @@ export async function POST(event) {
 		}
 
 		let result;
-		try {
-			console.log('Attempting transcription with gemini-2.5-flash');
-			result = await generateTranscriptWithModel(
-				ai,
-				'gemini-2.5-flash',
-				uploadedFile.uri,
-				uploadedFileMime,
-				language
-			);
-		} catch (error) {
-			if (
-				error instanceof Error &&
-				(error.message.includes('429') ||
-					error.message.includes('rate limit') ||
-					error.message.includes('503'))
-			) {
-				console.warn(
-					'Primary model unavailable or rate limited, falling back to gemini-2.5-flash-lite-preview'
-				);
+
+		const models = ['gemini-3-flash-preview', 'gemini-2.5-flash', 'gemini-2.5-flash-lite-preview'];
+
+		let lastError: Error | null = null;
+
+		for (const model of models) {
+			try {
+				console.log(`Attempting transcription with ${model}`);
 				result = await generateTranscriptWithModel(
 					ai,
-					'gemini-2.5-flash-lite-preview-09-2025',
+					model,
 					uploadedFile.uri,
 					uploadedFileMime,
 					language
 				);
-			} else {
-				throw error;
+				break;
+			} catch (error) {
+				lastError = error as Error;
+				if (
+					error instanceof Error &&
+					(error.message.includes('429') ||
+						error.message.includes('rate limit') ||
+						error.message.includes('503'))
+				) {
+					console.warn(`Model ${model} unavailable or rate limited, trying next model...`);
+				} else {
+					throw error; // Non-rate-limit error, don't retry
+				}
 			}
+		}
+
+		if (!result) {
+			throw lastError || new Error('All transcription models failed');
 		}
 
 		// Rate limiting disabled for now

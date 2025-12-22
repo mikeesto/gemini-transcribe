@@ -2,7 +2,7 @@
 
 A web application for transcribing audio and video files using Google's Gemini Flash model.
 
-**Live Application:** [https://gemini-transcribe.fly.dev/](https://gemini-transcribe.fly.dev/)
+**Try it here:** [https://gemini-transcribe.fly.dev/](https://gemini-transcribe.fly.dev/)
 
 ## Features
 
@@ -50,7 +50,4 @@ A web application for transcribing audio and video files using Google's Gemini F
 
 ## Future work
 
-Flash is a very interesting model to explore for audio transcription because...
-
-- It can attempt to detect not only words but also silence, sentiment, and sounds beyond human voices
-- It can translate the transcription
+Flash is a very interesting model to explore for audio transcription because it can attempt to detect not only words but also silence, sentiment, and sounds beyond human voices.

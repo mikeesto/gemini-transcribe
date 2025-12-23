@@ -225,7 +225,11 @@ export async function POST(event) {
 
 		let result;
 
-		const models = ['gemini-3-flash-preview', 'gemini-2.5-flash', 'gemini-2.5-flash-lite-preview'];
+		const models = [
+			'gemini-3-flash-preview',
+			'gemini-2.5-flash',
+			'gemini-2.5-flash-lite-preview-09-2025'
+		];
 
 		let lastError: Error | null = null;
 

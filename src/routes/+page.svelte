@@ -240,11 +240,11 @@
 	<main class="container relative z-10 mx-auto flex-grow px-4 py-8">
 		<section class="mb-6 text-center">
 			<h1
-				class="mb-4 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-3xl font-bold text-transparent md:text-4xl"
+				class="mb-3 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-3xl font-bold text-transparent md:text-4xl"
 			>
 				Gemini Transcribe
 			</h1>
-			<p class="mx-auto max-w-2xl text-xl leading-relaxed text-slate-700">
+			<p class="mx-auto max-w-2xl text-lg leading-relaxed text-slate-600">
 				Transform your audio and video files into accurate transcripts with speaker diarization and
 				logically grouped timestamps.
 			</p>
@@ -253,100 +253,32 @@
 		<div class="mx-auto max-w-4xl">
 			{#if uploadComplete}
 				<!-- Media Player Section -->
-				<div
-					class="mb-8 rounded-xl border border-indigo-200 bg-white/80 p-8 shadow-xl shadow-indigo-500/10 backdrop-blur-sm"
-				>
-					<div class="mb-8">
+				<div class="mb-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+					<div class="mb-6">
 						{#if fileType === 'audio'}
 							<audio src={fileUrl} controls class="h-12 w-full" bind:this={audioElement} />
 						{:else if fileType === 'video'}
-							<video
-								src={fileUrl}
-								controls
-								class="w-full rounded-lg shadow-xl shadow-indigo-500/20"
-								bind:this={videoElement}
-							/>
+							<video src={fileUrl} controls class="w-full rounded-lg" bind:this={videoElement} />
 						{/if}
 					</div>
 
 					<!-- Download Actions -->
-					<div class="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-						<button
-							on:click={downloadTranscript}
-							class="group relative transform overflow-hidden rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4 font-semibold text-white shadow-lg shadow-indigo-500/25 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-500/40"
-						>
-							<div class="relative flex items-center justify-center space-x-2">
-								<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-									/>
-								</svg>
-								<span>Download Transcript</span>
-							</div>
-						</button>
-
-						<button
-							on:click={() => downloadTranscript({ timestamps: false })}
-							class="group relative transform overflow-hidden rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-4 font-semibold text-white shadow-lg shadow-emerald-500/25 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-emerald-500/40"
-						>
-							<div class="relative flex items-center justify-center space-x-2">
-								<svg
-									class="h-5 w-5 flex-shrink-0"
-									fill="none"
-									stroke="currentColor"
-									viewBox="0 0 24 24"
-								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-									/>
-								</svg>
-								<span>
-									Download Transcript
-									<br />
-									(no timestamps)
-								</span>
-							</div>
-						</button>
-
-						<button
-							on:click={downloadSRT}
-							class="group relative transform overflow-hidden rounded-lg bg-gradient-to-r from-orange-500 to-red-500 px-6 py-4 font-semibold text-white shadow-lg shadow-orange-500/25 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-orange-500/40"
-						>
-							<div class="relative flex items-center justify-center space-x-2">
-								<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-									/>
-								</svg>
-								<span>Download SRT</span>
-							</div>
-						</button>
-					</div>
-
-					<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-						<button
-							on:click={copyToClipboard}
-							class="group relative transform overflow-hidden rounded-lg px-6 py-4 font-semibold text-white shadow-lg transition-all duration-300 hover:-translate-y-1 {copiedToClipboard
-								? 'bg-gradient-to-r from-emerald-600 to-teal-600 shadow-emerald-500/25 hover:shadow-xl hover:shadow-emerald-500/40'
-								: 'bg-gradient-to-r from-blue-600 to-cyan-600 shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/40'}"
-						>
-							<div class="relative flex items-center justify-center space-x-2">
+					<div
+						class="mt-6 flex flex-col gap-4 border-t border-slate-100 pt-6 sm:flex-row sm:items-center sm:justify-between"
+					>
+						<!-- Left Side: Export Tools -->
+						<div class="flex flex-wrap gap-2">
+							<button
+								on:click={copyToClipboard}
+								class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
+							>
 								{#if copiedToClipboard}
-									<svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+									<svg class="h-4 w-4 text-green-600" fill="currentColor" viewBox="0 0 24 24">
 										<path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
 									</svg>
-									<span>Copied</span>
+									<span class="text-green-600">Copied!</span>
 								{:else}
-									<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 										<path
 											stroke-linecap="round"
 											stroke-linejoin="round"
@@ -354,41 +286,85 @@
 											d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
 										/>
 									</svg>
-									<span>Copy to Clipboard</span>
+									<span>Copy</span>
 								{/if}
-							</div>
-						</button>
+							</button>
 
-						<button
-							on:click={reset}
-							class="group relative transform overflow-hidden rounded-lg border-2 border-slate-300 bg-white/90 px-6 py-4 font-semibold text-slate-700 shadow-lg shadow-slate-500/10 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:bg-slate-50 hover:shadow-xl hover:shadow-slate-500/20"
-						>
-							<div class="relative flex items-center justify-center space-x-2">
-								<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<button
+								on:click={downloadTranscript}
+								class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
+							>
+								<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path
 										stroke-linecap="round"
 										stroke-linejoin="round"
 										stroke-width="2"
-										d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+										d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
 									/>
 								</svg>
-								<span>Start Over</span>
-							</div>
-						</button>
+								<span>.txt</span>
+							</button>
+
+							<button
+								on:click={downloadSRT}
+								class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
+							>
+								<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+									/>
+								</svg>
+								<span>.srt</span>
+							</button>
+
+							<button
+								on:click={() => downloadTranscript({ timestamps: false })}
+								class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
+							>
+								<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+									/>
+								</svg>
+								<span>.txt (no timestamps)</span>
+							</button>
+						</div>
+
+						<!-- Right Side: Primary Action -->
+						<div>
+							<button
+								on:click={reset}
+								class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
+							>
+								<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M12 4v16m8-8H4"
+									/>
+								</svg>
+								<span>New transcription</span>
+							</button>
+						</div>
 					</div>
 				</div>
 			{:else}
 				<!-- Upload Section -->
-				<div
-					class="mb-8 rounded-xl border border-indigo-200 bg-white/80 p-8 shadow-xl shadow-indigo-500/10 backdrop-blur-sm"
-				>
-					<div class="mb-8">
+				<div class="mb-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+					<div class="mb-6">
 						<div class="flex gap-4">
 							<div
-								class="mb-2 inline-flex h-20 w-20 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-100 to-purple-100 shadow-lg shadow-indigo-500/20"
+								class="mb-2 inline-flex h-16 w-16 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-100 to-purple-100 shadow-lg shadow-indigo-500/20"
 							>
 								<svg
-									class="h-10 w-10 text-indigo-600"
+									class="h-8 w-8 text-indigo-600"
 									fill="none"
 									stroke="currentColor"
 									viewBox="0 0 24 24"
@@ -402,13 +378,15 @@
 								</svg>
 							</div>
 							<div>
-								<h2 class="mb-2 text-2xl font-bold text-slate-800">Upload Your Media</h2>
-								<p class="text-slate-600">Select an audio or video file to begin transcription</p>
+								<h2 class="mb-1 text-xl font-semibold text-slate-900">Upload Your Media</h2>
+								<p class="text-sm text-slate-500">
+									Select an audio or video file to begin transcription
+								</p>
 							</div>
 						</div>
 					</div>
 
-					<div class="space-y-6">
+					<div class="space-y-5">
 						<div>
 							<Label for="audio-file" class="mb-2 block text-sm font-medium text-slate-700">
 								Choose File
@@ -419,7 +397,7 @@
 									on:input={handleFileInput}
 									id="audio-file"
 									accept="audio/*,video/*"
-									class="block h-16 w-full rounded-lg border-2 border-indigo-200 bg-white/90 text-sm text-slate-700 shadow-sm backdrop-blur-sm file:mr-4 file:rounded-lg file:border-0 file:bg-gradient-to-r file:from-indigo-600 file:to-purple-600 file:px-6 file:py-3 file:text-sm file:font-semibold file:text-white file:transition-all file:duration-300 hover:file:shadow-lg hover:file:shadow-indigo-500/25 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+									class="block h-16 w-full rounded-lg border-2 border-indigo-200 text-sm text-slate-700 shadow-sm backdrop-blur-sm file:mr-4 file:rounded-lg file:border-0 file:bg-indigo-600 file:px-6 file:py-3 file:text-sm file:font-semibold file:text-white file:transition-all file:duration-300 hover:file:shadow-lg hover:file:shadow-indigo-500/25 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
 								/>
 							</div>
 						</div>
@@ -433,17 +411,17 @@
 								bind:value={language}
 								id="language"
 								placeholder="Enter language (e.g., English, Spanish)"
-								class="w-full rounded-lg border-2 border-indigo-200 bg-white/90 px-4 py-3 text-slate-800 placeholder-slate-400 shadow-sm backdrop-blur-sm transition-all duration-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+								class="w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-slate-800 placeholder-slate-400 transition-colors focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
 							/>
 						</div>
 
 						{#if errorMessage}
 							<div
-								class="mb-4 flex items-center space-x-3 rounded-lg border-2 border-red-300 bg-red-50 p-4 text-sm font-medium text-red-800 shadow-sm"
+								class="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700"
 								role="alert"
 							>
 								<svg
-									class="h-5 w-5 flex-shrink-0"
+									class="h-4 w-4 flex-shrink-0"
 									fill="none"
 									stroke="currentColor"
 									viewBox="0 0 24 24"
@@ -461,13 +439,13 @@
 
 						<button
 							on:click={handleSubmit}
-							class="group relative w-full transform overflow-hidden rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4 font-semibold text-white shadow-lg shadow-indigo-500/25 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-500/40 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:transform-none"
+							class="w-full rounded-lg bg-indigo-600 px-4 py-3 font-medium text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:opacity-50"
 							disabled={!selectedFile || isUploading}
 						>
-							<div class="relative flex items-center justify-center space-x-2">
+							<div class="flex items-center justify-center gap-2">
 								{#if isUploading}
 									<svg
-										class="h-5 w-5 animate-spin"
+										class="h-4 w-4 animate-spin"
 										fill="none"
 										stroke="currentColor"
 										viewBox="0 0 24 24"
@@ -481,7 +459,7 @@
 									</svg>
 									<span>Processing...</span>
 								{:else}
-									<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 										<path
 											stroke-linecap="round"
 											stroke-linejoin="round"
@@ -494,21 +472,20 @@
 							</div>
 						</button>
 
-						<div class="text-center">
-							<div
-								class="rounded-lg border-2 border-cyan-200 bg-gradient-to-r from-cyan-50 to-blue-50 p-4 text-sm text-cyan-800 shadow-sm"
-							>
-								<p>Supported formats: MP3, WAV, MP4, AVI & more</p>
-								<p>Maximum file size: 512MB</p>
-								<p>This app uses an experimental model. If processing fails, please try again</p>
-							</div>
+						<div
+							class="rounded-lg border border-slate-200 bg-slate-50 p-4 text-center text-sm text-slate-600"
+						>
+							<p>Supported formats: MP3, WAV, MP4, AVI & more · Max size: 512MB</p>
+							<p class="mt-1 text-xs text-slate-500">
+								This app uses an experimental model. If processing fails, please try again.
+							</p>
 						</div>
 
 						{#if isUploading}
 							<div class="text-center">
-								<div class="inline-flex items-center space-x-2 text-indigo-600">
+								<div class="inline-flex items-center gap-2 text-sm text-slate-600">
 									<svg
-										class="h-5 w-5 animate-spin"
+										class="h-4 w-4 animate-spin"
 										fill="none"
 										stroke="currentColor"
 										viewBox="0 0 24 24"
@@ -520,16 +497,14 @@
 											d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
 										/>
 									</svg>
-									<span class="font-medium"
-										>Processing your file... This may take a few minutes</span
-									>
+									<span>Processing your file... This may take a few minutes</span>
 								</div>
 							</div>
 						{:else}
 							<div class="text-center">
 								<button
 									on:click={useSample}
-									class="inline-flex items-center space-x-2 text-indigo-600 transition-colors duration-200 hover:text-purple-600"
+									class="inline-flex items-center gap-1 text-sm text-slate-600 underline-offset-2 transition-colors hover:text-slate-900 hover:underline"
 								>
 									<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 										<path
@@ -549,39 +524,31 @@
 
 			<!-- Transcript Display -->
 			{#if transcriptArray.length > 0}
-				<div class="space-y-4">
-					<div class="mb-8 text-center">
-						<h3
-							class="mb-2 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-2xl font-bold text-transparent"
-						>
-							Transcript
-						</h3>
-						<p class="text-slate-600">Click on timestamps to jump to that moment</p>
+				<div class="space-y-3">
+					<div class="mb-4 flex items-center justify-between">
+						<h3 class="text-lg font-semibold text-slate-900">Transcript</h3>
+						<p class="text-sm text-slate-500">Click timestamps to jump to that moment</p>
 					</div>
 
 					{#each transcriptArray as entry, index}
 						<div
-							class="group rounded-xl border border-slate-200 bg-white/90 p-6 shadow-lg shadow-slate-500/10 backdrop-blur-sm transition-all duration-300"
+							class="rounded-lg border border-slate-200 bg-white p-4 transition-colors hover:bg-slate-50"
 						>
-							<div
-								class="flex flex-col space-y-3 sm:flex-row sm:items-start sm:space-x-4 sm:space-y-0"
-							>
-								<button
-									class="inline-flex flex-shrink-0 transform items-center justify-center rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-2 text-sm font-bold text-white shadow-lg shadow-indigo-500/25 transition-all duration-200 hover:scale-105 hover:shadow-xl hover:shadow-indigo-500/40"
-									on:click={() => handleTimestampClick(entry.timestamp)}
-								>
-									{entry.timestamp}
-								</button>
-								<div class="min-w-0 flex-1">
-									<div class="mb-3 flex items-center space-x-2">
-										<span
-											class="inline-flex items-center rounded-full border-2 border-emerald-200 bg-gradient-to-r from-emerald-100 to-teal-100 px-3 py-1 text-sm font-semibold text-emerald-700 shadow-sm"
-										>
-											{entry.speaker}
-										</span>
-									</div>
-									<p class="font-medium leading-relaxed text-slate-800">{entry.text}</p>
+							<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-4">
+								<div class="flex items-center gap-2">
+									<button
+										class="rounded bg-slate-100 px-2 py-1 font-mono text-sm text-slate-700 transition-colors hover:bg-slate-200"
+										on:click={() => handleTimestampClick(entry.timestamp)}
+									>
+										{entry.timestamp}
+									</button>
+									<span
+										class="rounded-full bg-slate-100 px-2.5 py-0.5 text-sm font-medium text-slate-600"
+									>
+										{entry.speaker}
+									</span>
 								</div>
+								<p class="flex-1 text-slate-700">{entry.text}</p>
 							</div>
 						</div>
 					{/each}
@@ -590,14 +557,14 @@
 		</div>
 	</main>
 
-	<footer class="relative z-10 mt-auto border-t border-indigo-200 bg-white/80 backdrop-blur-sm">
+	<footer class="relative z-10 border-slate-200">
 		<div class="container mx-auto px-4 py-4">
 			<div class="text-center text-slate-500">
 				<p class="text-sm">
 					by
 					<a
 						href="https://mikeesto.com"
-						class="font-medium text-indigo-600 transition-colors duration-200 hover:text-purple-600"
+						class="font-medium text-indigo-600 transition-colors duration-200 hover:text-indigo-800"
 					>
 						@mikeesto
 					</a>

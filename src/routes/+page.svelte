@@ -1,7 +1,5 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { Input } from '$lib/components/ui/input/index.js';
-	import { Label } from '$lib/components/ui/label/index.js';
 
 	let selectedFile = $state<File | null>(null);
 	let uploadComplete = $state(false);
@@ -235,11 +233,11 @@
 	<title>Gemini Transcribe</title>
 </svelte:head>
 
-<div class="flex min-h-screen flex-col bg-gradient-to-br from-indigo-50 via-white to-cyan-50">
-	<main class="container relative z-10 mx-auto flex-grow px-4 py-8">
+<div class="flex min-h-screen flex-col bg-linear-to-br from-indigo-50 via-white to-cyan-50">
+	<main class="relative z-10 container mx-auto grow px-4 py-8">
 		<section class="mb-6 text-center">
 			<h1
-				class="mb-3 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-3xl font-bold text-transparent md:text-4xl"
+				class="mb-3 bg-linear-to-r from-indigo-600 to-purple-600 bg-clip-text text-3xl font-bold text-transparent md:text-4xl"
 			>
 				Gemini Transcribe
 			</h1>
@@ -271,7 +269,7 @@
 						<div class="flex flex-wrap gap-2">
 							<button
 								onclick={copyToClipboard}
-								class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
+								class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
 							>
 								{#if copiedToClipboard}
 									<svg class="h-4 w-4 text-green-600" fill="currentColor" viewBox="0 0 24 24">
@@ -293,7 +291,7 @@
 
 							<button
 								onclick={() => downloadTranscript()}
-								class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
+								class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
 							>
 								<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path
@@ -308,7 +306,7 @@
 
 							<button
 								onclick={downloadSRT}
-								class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
+								class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
 							>
 								<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path
@@ -323,7 +321,7 @@
 
 							<button
 								onclick={() => downloadTranscript({ timestamps: false })}
-								class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
+								class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
 							>
 								<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path
@@ -341,7 +339,7 @@
 						<div>
 							<button
 								onclick={reset}
-								class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
+								class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
 							>
 								<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path
@@ -362,7 +360,7 @@
 					<div class="mb-6">
 						<div class="flex gap-4">
 							<div
-								class="mb-2 inline-flex h-16 w-16 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-100 to-purple-100 shadow-lg shadow-indigo-500/20"
+								class="mb-2 inline-flex h-16 w-16 items-center justify-center rounded-xl bg-linear-to-br from-indigo-100 to-purple-100 shadow-lg shadow-indigo-500/20"
 							>
 								<svg
 									class="h-8 w-8 text-indigo-600"
@@ -389,25 +387,25 @@
 
 					<div class="space-y-5">
 						<div>
-							<Label for="audio-file" class="mb-2 block text-sm font-medium text-slate-700">
+							<label for="audio-file" class="mb-2 block text-sm font-medium text-slate-700">
 								Choose File
-							</Label>
+							</label>
 							<div class="relative">
-								<Input
+								<input
 									type="file"
 									oninput={handleFileInput}
 									id="audio-file"
 									accept="audio/*,video/*"
-									class="block h-16 w-full rounded-lg border-2 border-indigo-200 text-sm text-slate-700 shadow-sm backdrop-blur-sm file:mr-4 file:rounded-lg file:border-0 file:bg-indigo-600 file:px-6 file:py-3 file:text-sm file:font-semibold file:text-white file:transition-all file:duration-300 hover:file:shadow-lg hover:file:shadow-indigo-500/25 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+									class="block h-auto w-full rounded-lg border-2 border-indigo-200 p-1.5 text-sm text-slate-500 shadow-sm backdrop-blur-sm file:mr-4 file:rounded-md file:border-0 file:bg-indigo-600 file:px-4 file:py-3 file:text-sm file:font-semibold file:text-white hover:file:cursor-pointer hover:file:bg-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
 								/>
 							</div>
 						</div>
 
 						<div>
-							<Label for="language" class="mb-2 block text-sm font-medium text-slate-700">
+							<label for="language" class="mb-2 block text-sm font-medium text-slate-700">
 								Language of Transcript
-							</Label>
-							<Input
+							</label>
+							<input
 								type="text"
 								bind:value={language}
 								id="language"
@@ -421,12 +419,7 @@
 								class="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700"
 								role="alert"
 							>
-								<svg
-									class="h-4 w-4 flex-shrink-0"
-									fill="none"
-									stroke="currentColor"
-									viewBox="0 0 24 24"
-								>
+								<svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path
 										stroke-linecap="round"
 										stroke-linejoin="round"
@@ -440,7 +433,7 @@
 
 						<button
 							onclick={handleSubmit}
-							class="w-full rounded-lg bg-indigo-600 px-4 py-3 font-medium text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:opacity-50"
+							class="w-full cursor-pointer rounded-lg bg-indigo-600 px-4 py-3 font-medium text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:opacity-50"
 							disabled={!selectedFile || isUploading}
 						>
 							<div class="flex items-center justify-center gap-2">
@@ -505,7 +498,7 @@
 							<div class="text-center">
 								<button
 									onclick={useSample}
-									class="inline-flex items-center gap-1 text-sm text-slate-600 underline-offset-2 transition-colors hover:text-slate-900 hover:underline"
+									class="inline-flex cursor-pointer items-center gap-1 text-sm text-slate-600 underline-offset-2 transition-colors hover:text-slate-900 hover:underline"
 								>
 									<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 										<path
@@ -538,7 +531,7 @@
 							<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-4">
 								<div class="flex items-center gap-2">
 									<button
-										class="rounded bg-slate-100 px-2 py-1 font-mono text-sm text-slate-700 transition-colors hover:bg-slate-200"
+										class="cursor-pointer rounded bg-slate-100 px-2 py-1 font-mono text-sm text-slate-700 transition-colors hover:bg-slate-200"
 										onclick={() => handleTimestampClick(entry.timestamp)}
 									>
 										{entry.timestamp}

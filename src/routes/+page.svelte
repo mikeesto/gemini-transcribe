@@ -3,30 +3,32 @@
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
 
-	let selectedFile: File | null = null;
-	let uploadComplete = false;
-	let isUploading = false;
-	let fileUrl: string | null = null;
-	let fileType: 'audio' | 'video';
+	let selectedFile = $state<File | null>(null);
+	let uploadComplete = $state(false);
+	let isUploading = $state(false);
+	let fileUrl = $state<string | null>(null);
+	let fileType = $state<'audio' | 'video'>('audio');
 
-	let streamBuffer = '';
-	let transcriptArray: Array<{ timestamp: string; speaker: string; text: string }> = [];
-	let language = 'English';
-	let initialized = false;
-	let errorMessage: string | null = null;
+	let streamBuffer = $state('');
+	let transcriptArray = $state<Array<{ timestamp: string; speaker: string; text: string }>>([]);
+	let language = $state('English');
+	let initialized = $state(false);
+	let errorMessage = $state<string | null>(null);
 
-	let audioElement: HTMLAudioElement | null = null;
-	let videoElement: HTMLVideoElement | null = null;
-	let copiedToClipboard = false;
+	let audioElement = $state<HTMLAudioElement | null>(null);
+	let videoElement = $state<HTMLVideoElement | null>(null);
+	let copiedToClipboard = $state(false);
 
 	onMount(() => {
 		language = localStorage.getItem('transcriptionLanguage') || 'English';
 		initialized = true;
 	});
 
-	$: if (initialized) {
-		localStorage.setItem('transcriptionLanguage', language);
-	}
+	$effect(() => {
+		if (initialized) {
+			localStorage.setItem('transcriptionLanguage', language);
+		}
+	});
 
 	function handleTimestampClick(timestamp: string) {
 		const parts = timestamp.split(':').map(Number);
@@ -62,7 +64,7 @@
 	function parseStreamedJson(
 		buffer: string
 	): Array<{ timestamp: string; speaker: string; text: string }> {
-		const objectStrings = buffer.match(/{[^}]*}/g); // This regex attempts to find all substrings that look like complete JSON objects
+		const objectStrings = buffer.match(/{[^}]*}/g);
 		if (!objectStrings) {
 			return [];
 		}
@@ -81,8 +83,6 @@
 					}
 					return null;
 				} catch (e) {
-					// This object string is likely incomplete or malformed, so we skip it
-					// The next chunk from the stream might complete it
 					return null;
 				}
 			})
@@ -93,7 +93,6 @@
 		if (!selectedFile) return;
 		errorMessage = null;
 
-		// Only allow files that are less than 512MB in size
 		if (selectedFile.size >= 536870912) {
 			alert('This file is too large. Please select a file that is less than 512MB.');
 			return;
@@ -269,7 +268,7 @@
 						<!-- Left Side: Export Tools -->
 						<div class="flex flex-wrap gap-2">
 							<button
-								on:click={copyToClipboard}
+								onclick={copyToClipboard}
 								class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
 							>
 								{#if copiedToClipboard}
@@ -291,7 +290,7 @@
 							</button>
 
 							<button
-								on:click={downloadTranscript}
+								onclick={downloadTranscript}
 								class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
 							>
 								<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -306,7 +305,7 @@
 							</button>
 
 							<button
-								on:click={downloadSRT}
+								onclick={downloadSRT}
 								class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
 							>
 								<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -321,7 +320,7 @@
 							</button>
 
 							<button
-								on:click={() => downloadTranscript({ timestamps: false })}
+								onclick={() => downloadTranscript({ timestamps: false })}
 								class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
 							>
 								<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -339,7 +338,7 @@
 						<!-- Right Side: Primary Action -->
 						<div>
 							<button
-								on:click={reset}
+								onclick={reset}
 								class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
 							>
 								<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -394,7 +393,7 @@
 							<div class="relative">
 								<Input
 									type="file"
-									on:input={handleFileInput}
+									oninput={handleFileInput}
 									id="audio-file"
 									accept="audio/*,video/*"
 									class="block h-16 w-full rounded-lg border-2 border-indigo-200 text-sm text-slate-700 shadow-sm backdrop-blur-sm file:mr-4 file:rounded-lg file:border-0 file:bg-indigo-600 file:px-6 file:py-3 file:text-sm file:font-semibold file:text-white file:transition-all file:duration-300 hover:file:shadow-lg hover:file:shadow-indigo-500/25 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
@@ -438,7 +437,7 @@
 						{/if}
 
 						<button
-							on:click={handleSubmit}
+							onclick={handleSubmit}
 							class="w-full rounded-lg bg-indigo-600 px-4 py-3 font-medium text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:opacity-50"
 							disabled={!selectedFile || isUploading}
 						>
@@ -503,7 +502,7 @@
 						{:else}
 							<div class="text-center">
 								<button
-									on:click={useSample}
+									onclick={useSample}
 									class="inline-flex items-center gap-1 text-sm text-slate-600 underline-offset-2 transition-colors hover:text-slate-900 hover:underline"
 								>
 									<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -530,7 +529,7 @@
 						<p class="text-sm text-slate-500">Click timestamps to jump to that moment</p>
 					</div>
 
-					{#each transcriptArray as entry, index}
+					{#each transcriptArray as entry}
 						<div
 							class="rounded-lg border border-slate-200 bg-white p-4 transition-colors hover:bg-slate-50"
 						>
@@ -538,7 +537,7 @@
 								<div class="flex items-center gap-2">
 									<button
 										class="rounded bg-slate-100 px-2 py-1 font-mono text-sm text-slate-700 transition-colors hover:bg-slate-200"
-										on:click={() => handleTimestampClick(entry.timestamp)}
+										onclick={() => handleTimestampClick(entry.timestamp)}
 									>
 										{entry.timestamp}
 									</button>

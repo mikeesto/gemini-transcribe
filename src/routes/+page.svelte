@@ -471,7 +471,7 @@
 						>
 							<p>Supported formats: MP3, WAV, MP4, AVI & more · Max size: 512MB</p>
 							<p class="mt-1 text-xs text-slate-500">
-								This app uses an experimental model. If processing fails, please try again.
+								This app uses experimental models. If processing fails, please try again later.
 							</p>
 						</div>
 

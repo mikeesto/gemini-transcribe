@@ -255,9 +255,11 @@
 				<div class="mb-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
 					<div class="mb-6">
 						{#if fileType === 'audio'}
-							<audio src={fileUrl} controls class="h-12 w-full" bind:this={audioElement} />
+							<audio src={fileUrl} controls class="h-12 w-full" bind:this={audioElement}></audio>
 						{:else if fileType === 'video'}
-							<video src={fileUrl} controls class="w-full rounded-lg" bind:this={videoElement} />
+							<video src={fileUrl} controls class="w-full rounded-lg" bind:this={videoElement}
+								><track kind="captions" src="" srclang="en" label="English" /></video
+							>
 						{/if}
 					</div>
 
@@ -290,7 +292,7 @@
 							</button>
 
 							<button
-								onclick={downloadTranscript}
+								onclick={() => downloadTranscript()}
 								class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
 							>
 								<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

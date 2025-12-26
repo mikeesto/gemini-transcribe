@@ -6,6 +6,8 @@ import { env } from '$env/dynamic/private';
 import { safetySettings } from '$lib/index';
 import { Readable } from 'node:stream';
 import Busboy from 'busboy';
+import { parseFile } from 'music-metadata';
+import { logUsage } from '$lib/server/db';
 
 const requests = new Map<string, { count: number; expires: number }>();
 const RATE_LIMIT = 5;
@@ -17,6 +19,12 @@ async function* streamChunks(asyncGenerator: AsyncIterableIterator<{ text?: stri
 			yield chunk.text;
 		}
 	}
+}
+
+async function getMediaDuration(filePath: string): Promise<number> {
+	const metadata = await parseFile(filePath);
+	const duration = metadata.format.duration || 0;
+	return Math.round(duration * 1000); // convert to milliseconds
 }
 
 async function generateTranscriptWithModel(
@@ -85,6 +93,8 @@ export async function POST(event) {
 		return new Response('File too large', { status: 413 });
 	}
 
+	const fileSizeBytes = contentLength ? parseInt(contentLength) : 0;
+
 	// Convert Web ReadableStream to Node Readable
 	const nodeReadable = Readable.fromWeb(request.body as import('stream/web').ReadableStream);
 
@@ -92,6 +102,7 @@ export async function POST(event) {
 	let uploadedFilePath: string | null = null;
 	let uploadedFileMime: string | undefined;
 	let tempFileHandle: FileResult | undefined;
+	let durationMs = 0;
 
 	const busboy = Busboy({
 		headers: {
@@ -159,6 +170,13 @@ export async function POST(event) {
 
 	let uploadResult;
 	try {
+		try {
+			durationMs = await getMediaDuration(uploadedFilePath);
+		} catch (durationError) {
+			console.warn('Could not extract media duration:', durationError);
+			// Continue without duration - not critical
+		}
+
 		uploadResult = await ai.files.upload({
 			file: uploadedFilePath,
 			config: {
@@ -232,6 +250,7 @@ export async function POST(event) {
 		];
 
 		let lastError: Error | null = null;
+		let successfulModel = '';
 
 		for (const model of models) {
 			try {
@@ -243,6 +262,7 @@ export async function POST(event) {
 					uploadedFileMime,
 					language
 				);
+				successfulModel = model;
 				break;
 			} catch (error) {
 				lastError = error as Error;
@@ -261,6 +281,14 @@ export async function POST(event) {
 
 		if (!result) {
 			throw lastError || new Error('All transcription models failed');
+		}
+
+		// Log usage to the database
+		try {
+			logUsage(fileSizeBytes, successfulModel, durationMs);
+		} catch (dbError) {
+			console.error('Error logging usage to database:', dbError);
+			// Proceed without failing the request
 		}
 
 		record.count++;

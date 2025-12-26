@@ -20,4 +20,5 @@ Thumbs.db
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
-TODO.txt
+*.db
+*.db-journal

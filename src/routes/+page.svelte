@@ -1,5 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import type { PageData } from './$types';
+
+	let { data }: { data: PageData } = $props();
 
 	let selectedFile = $state<File | null>(null);
 	let uploadComplete = $state(false);
@@ -554,6 +557,11 @@
 	<footer class="relative z-10 border-slate-200">
 		<div class="container mx-auto px-4 py-4">
 			<div class="text-center text-slate-500">
+				{#if data.monthlyUploadCount >= 100}
+					<p class="mb-2 text-xs text-slate-400">
+						{data.monthlyUploadCount} files transcribed this month
+					</p>
+				{/if}
 				<p class="text-sm">
 					by
 					<a

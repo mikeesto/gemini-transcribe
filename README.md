@@ -51,3 +51,9 @@ A web application for transcribing audio and video files using Google's Gemini F
 ## Future work
 
 Flash is a very interesting model to explore for audio transcription because it can attempt to detect not only words but also silence, sentiment, and sounds beyond human voices.
+
+## Copy usage metrics database from Fly.io instance
+
+```bash
+fly sftp get /data/usage.db
+```

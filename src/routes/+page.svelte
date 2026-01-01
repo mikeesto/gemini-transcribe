@@ -558,11 +558,11 @@
 		<div class="container mx-auto px-4 py-4">
 			<div class="text-center text-slate-500">
 				{#if data.monthlyUploadCount >= 100}
-					<p class="mb-2 text-xs text-slate-400">
+					<p class="mb-1 text-xs text-slate-400">
 						{data.monthlyUploadCount} files transcribed this month
 					</p>
 				{/if}
-				<p class="text-sm">
+				<p class="text-xs">
 					by
 					<a
 						href="https://mikeesto.com"
@@ -571,7 +571,7 @@
 						@mikeesto
 					</a>
 				</p>
-				<p class="mt-1 text-sm">Suggestions or feedback? I'd love to hear from you.</p>
+				<p class="mt-1 text-xs">Suggestions or feedback? I'd love to hear from you</p>
 			</div>
 		</div>
 	</footer>

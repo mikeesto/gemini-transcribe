@@ -12,15 +12,33 @@ db.exec(`
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
     file_size_bytes INTEGER,
     model_used TEXT,
-    duration_ms INTEGER
+    duration_ms INTEGER,
+    rating INTEGER
   )
 `);
 
-export function logUsage(fileSizeBytes: number, modelUsed: string, durationMs: number) {
+// MIGRATION: Attempt to add the column if it doesn't exist (for existing prod DB)
+try {
+	db.exec('ALTER TABLE usage_logs ADD COLUMN rating INTEGER');
+} catch {
+	// Column likely already exists, ignore
+}
+
+export function logUsage(
+	fileSizeBytes: number,
+	modelUsed: string,
+	durationMs: number
+): number | bigint {
 	const stmt = db.prepare(
 		'INSERT INTO usage_logs (file_size_bytes, model_used, duration_ms) VALUES (?, ?, ?)'
 	);
-	stmt.run(fileSizeBytes, modelUsed, durationMs);
+	const info = stmt.run(fileSizeBytes, modelUsed, durationMs);
+	return info.lastInsertRowid;
+}
+
+export function saveRating(id: number, rating: number) {
+	const stmt = db.prepare('UPDATE usage_logs SET rating = ? WHERE id = ?');
+	stmt.run(rating, id);
 }
 
 // Get a count of uploads over the past month

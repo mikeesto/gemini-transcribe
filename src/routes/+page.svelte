@@ -20,6 +20,9 @@
 	let videoElement = $state<HTMLVideoElement | null>(null);
 	let copiedToClipboard = $state(false);
 
+	let usageId = $state<number | null>(null);
+	let rating = $state<number | null>(null); // 1 for up, -1 for down
+
 	onMount(() => {
 		language = localStorage.getItem('transcriptionLanguage') || 'English';
 		initialized = true;
@@ -100,6 +103,8 @@
 		}
 
 		isUploading = true;
+		usageId = null;
+		rating = null;
 
 		const formData = new FormData();
 		formData.append('file', selectedFile);
@@ -112,6 +117,11 @@
 				Connection: 'keep-alive'
 			}
 		});
+
+		const idHeader = response.headers.get('X-Usage-Id');
+		if (idHeader) {
+			usageId = parseInt(idHeader);
+		}
 
 		if (!response.ok) {
 			errorMessage = await response.text();
@@ -193,6 +203,21 @@
 		a.click();
 	}
 
+	async function submitRating(val: number) {
+		if (!usageId) return;
+		rating = val;
+
+		try {
+			await fetch('/api/rate', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ usageId, rating: val })
+			});
+		} catch (e) {
+			console.error('Failed to submit rating', e);
+		}
+	}
+
 	function reset() {
 		selectedFile = null;
 		uploadComplete = false;
@@ -201,6 +226,8 @@
 		streamBuffer = '';
 		transcriptArray = [];
 		errorMessage = null;
+		usageId = null;
+		rating = null;
 		if (audioElement) {
 			audioElement.currentTime = 0;
 			audioElement.pause();
@@ -269,7 +296,65 @@
 						class="mt-6 flex flex-col gap-4 border-t border-slate-100 pt-6 sm:flex-row sm:items-center sm:justify-between"
 					>
 						<!-- Left Side: Export Tools -->
-						<div class="flex flex-wrap gap-2">
+						<div class="flex flex-wrap items-center gap-2">
+							<!-- Rating -->
+							{#if usageId}
+								<div class="mr-4 flex items-center gap-1 border-r border-slate-200 pr-4">
+									<span class="mr-2 hidden text-xs font-medium text-slate-500 sm:inline"
+										>Quality:</span
+									>
+
+									<button
+										onclick={() => submitRating(1)}
+										class="cursor-pointer rounded p-1.5 transition-colors hover:bg-slate-100 {rating ===
+										1
+											? 'bg-green-50 text-green-600'
+											: 'text-slate-400'}"
+										disabled={rating !== null}
+										title="Good transcription"
+									>
+										<svg
+											class="h-5 w-5"
+											fill={rating === 1 ? 'currentColor' : 'none'}
+											stroke="currentColor"
+											viewBox="0 0 24 24"
+										>
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												stroke-width="2"
+												d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"
+											/>
+										</svg>
+									</button>
+
+									<button
+										onclick={() => submitRating(-1)}
+										class="cursor-pointer rounded p-1.5 transition-colors hover:bg-slate-100 {rating ===
+										-1
+											? 'bg-red-50 text-red-600'
+											: 'text-slate-400'}"
+										disabled={rating !== null}
+										title="Bad transcription"
+									>
+										<svg
+											class="h-5 w-5"
+											fill={rating === -1 ? 'currentColor' : 'none'}
+											stroke="currentColor"
+											viewBox="0 0 24 24"
+										>
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												stroke-width="2"
+												d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.095c.5 0 .905-.405.905-.905 0-.714.211-1.412.608-2.006L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5"
+											/>
+										</svg>
+									</button>
+								</div>
+							{/if}
+							<!-- Rating End -->
+
 							<button
 								onclick={copyToClipboard}
 								class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"

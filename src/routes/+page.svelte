@@ -97,8 +97,8 @@
 		if (!selectedFile) return;
 		errorMessage = null;
 
-		if (selectedFile.size >= 536870912) {
-			alert('This file is too large. Please select a file that is less than 512MB.');
+		if (selectedFile.size >= 268435456) {
+			alert('This file is too large. Please select a file that is less than 256MB.');
 			return;
 		}
 
@@ -557,7 +557,7 @@
 						<div
 							class="rounded-lg border border-slate-200 bg-slate-50 p-4 text-center text-sm text-slate-600"
 						>
-							<p>Supported formats: MP3, WAV, MP4, AVI & more · Max size: 512MB</p>
+							<p>Supported formats: MP3, WAV, MP4, AVI & more · Max size: 256MB</p>
 							<p class="mt-1 text-xs text-slate-500">
 								This app uses experimental models. If processing fails, please try again later.
 							</p>

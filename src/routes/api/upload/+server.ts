@@ -120,7 +120,7 @@ export async function POST(event) {
 
 	// Reject large uploads
 	const contentLength = request.headers.get('content-length');
-	const MAX_UPLOAD_BYTES = 512 * 1024 * 1024; // 512MB
+	const MAX_UPLOAD_BYTES = 256 * 1024 * 1024; // 256MB
 	if (contentLength && Number(contentLength) > MAX_UPLOAD_BYTES) {
 		return new Response('File too large', { status: 413 });
 	}

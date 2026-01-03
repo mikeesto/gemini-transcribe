@@ -140,6 +140,23 @@
 		usageId = null;
 		rating = null;
 
+		// Check rate limit before uploading
+		try {
+			const check = await fetch('/api/upload');
+			if (!check.ok) {
+				if (check.status === 429) {
+					errorMessage =
+						'This free service supports up to 5 requests per user per day. Please try again tomorrow.';
+				} else {
+					errorMessage = 'Service temporarily unavailable.';
+				}
+				isUploading = false;
+				return;
+			}
+		} catch (e) {
+			console.warn('Rate limit check failed, attempting upload anyway...');
+		}
+
 		const formData = new FormData();
 		formData.append('file', selectedFile);
 		formData.append('language', language);

@@ -14,6 +14,21 @@ const RATE_LIMIT = 5;
 const DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 const MAX_MEDIA_DURATION_MS = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
 
+function checkRateLimit(ip: string) {
+	const now = Date.now();
+	let record = requests.get(ip);
+
+	if (!record || record.expires < now) {
+		record = { count: 0, expires: now + DURATION };
+		requests.set(ip, record);
+	}
+
+	if (record.count >= RATE_LIMIT) {
+		return { allowed: false, record };
+	}
+	return { allowed: true, record };
+}
+
 // --- MOCK GENERATOR ---
 async function* mockTranscriptGenerator() {
 	const mockData = [
@@ -95,27 +110,40 @@ async function generateTranscriptWithModel(
 	return response;
 }
 
-export async function POST(event) {
+export async function GET(event) {
 	const ip = event.getClientAddress();
-	const now = Date.now();
-	let record = requests.get(ip);
+	const { allowed, record } = checkRateLimit(ip);
 
-	if (!record || record.expires < now) {
-		record = { count: 0, expires: now + DURATION };
-		requests.set(ip, record);
+	if (!allowed) {
+		return new Response('Rate limit exceeded', { status: 429 });
 	}
 
-	if (record.count >= RATE_LIMIT) {
+	return new Response(JSON.stringify({ remaining: RATE_LIMIT - (record?.count || 0) }), {
+		status: 200
+	});
+}
+
+export async function POST(event) {
+	const ip = event.getClientAddress();
+	const { request } = event;
+
+	const { allowed, record } = checkRateLimit(ip);
+	if (!allowed) {
 		return new Response(
-			'This free service supports up to 5 requests per user per day. I am trying to support more soon. Please try again tomorrow.',
+			'This free service supports up to 5 requests per user per day. Please try again tomorrow.',
 			{ status: 429 }
 		);
 	}
 
-	const { request } = event;
+	if (record) {
+		record.count++;
+		requests.set(ip, record);
+	}
 
 	const contentType = request.headers.get('content-type');
 	if (!contentType || !contentType.startsWith('multipart/form-data')) {
+		record.count--;
+		requests.set(ip, record);
 		return new Response('Expected multipart/form-data', { status: 400 });
 	}
 
@@ -123,6 +151,8 @@ export async function POST(event) {
 	const contentLength = request.headers.get('content-length');
 	const MAX_UPLOAD_BYTES = 256 * 1024 * 1024; // 256MB
 	if (contentLength && Number(contentLength) > MAX_UPLOAD_BYTES) {
+		record.count--;
+		requests.set(ip, record);
 		return new Response('File too large', { status: 413 });
 	}
 
@@ -190,11 +220,15 @@ export async function POST(event) {
 		await parsePromise;
 	} catch (err) {
 		console.error('Error parsing multipart body:', err);
+		record.count--;
+		requests.set(ip, record);
 		if (tempFileHandle) tempFileHandle.cleanup();
 		return new Response('Error uploading file', { status: 500 });
 	}
 
 	if (!uploadedFilePath || !uploadedFileMime) {
+		record.count--;
+		requests.set(ip, record);
 		if (tempFileHandle) tempFileHandle.cleanup();
 		return new Response('No file uploaded', { status: 400 });
 	}
@@ -363,9 +397,6 @@ export async function POST(event) {
 		console.error('Error logging usage to database:', dbError);
 		// Proceed without failing the request
 	}
-
-	record.count++;
-	requests.set(ip, record);
 
 	// Delete the file from Google (only if we uploaded it)
 	if (env.MOCK_API !== 'true' && uploadResult && uploadResult.name) {

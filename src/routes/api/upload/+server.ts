@@ -12,6 +12,7 @@ import { logUsage } from '$lib/server/db';
 const requests = new Map<string, { count: number; expires: number }>();
 const RATE_LIMIT = 5;
 const DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+const MAX_MEDIA_DURATION_MS = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
 
 // --- MOCK GENERATOR ---
 async function* mockTranscriptGenerator() {
@@ -222,6 +223,15 @@ export async function POST(event) {
 		try {
 			try {
 				durationMs = await getMediaDuration(uploadedFilePath);
+
+				// Check if duration exceeds the limit
+				if (durationMs > MAX_MEDIA_DURATION_MS) {
+					const minutes = Math.round(durationMs / 60000);
+					return new Response(
+						`File is too long (${minutes} minutes). The model currently only supports up to 2 hours of audio per file.`,
+						{ status: 400 }
+					);
+				}
 			} catch (durationError) {
 				console.warn('Could not extract media duration:', durationError);
 				// Continue without duration - not critical

@@ -65,6 +65,23 @@
 		}
 	}
 
+	function getDuration(file: File): Promise<number> {
+		return new Promise((resolve, reject) => {
+			const url = URL.createObjectURL(file);
+			const media = new Audio(url);
+
+			media.onloadedmetadata = () => {
+				URL.revokeObjectURL(url);
+				resolve(media.duration); // Duration in seconds
+			};
+
+			media.onerror = (error) => {
+				URL.revokeObjectURL(url);
+				reject(error);
+			};
+		});
+	}
+
 	function parseStreamedJson(
 		buffer: string
 	): Array<{ timestamp: string; speaker: string; text: string }> {
@@ -100,6 +117,23 @@
 		if (selectedFile.size >= 268435456) {
 			alert('This file is too large. Please select a file that is less than 256MB.');
 			return;
+		}
+
+		// Check duration (2 hour limit)
+		try {
+			const durationSec = await getDuration(selectedFile);
+			const MAX_DURATION_SEC = 2 * 60 * 60; // 2 Hours
+
+			if (durationSec > MAX_DURATION_SEC) {
+				const hours = Math.floor(durationSec / 3600);
+				const minutes = Math.floor((durationSec % 3600) / 60);
+				const durationStr = `${hours}h ${minutes}m`;
+				errorMessage = `Sorry, the file is too long (${durationStr}). We can only support up to 2 hours of audio per file.`;
+				return;
+			}
+		} catch (e) {
+			console.warn('Could not determine duration on client', e);
+			// Continue and let server handle it
 		}
 
 		isUploading = true;
@@ -557,7 +591,10 @@
 						<div
 							class="rounded-lg border border-slate-200 bg-slate-50 p-4 text-center text-sm text-slate-600"
 						>
-							<p>Supported formats: MP3, WAV, MP4, AVI & more · Max size: 256MB</p>
+							<p>
+								Supported formats: MP3, WAV, MP4, AVI & more · Max size: 256MB · Max duration: 2
+								hours
+							</p>
 							<p class="mt-1 text-xs text-slate-500">
 								This app uses experimental models. If processing fails, please try again later.
 							</p>

@@ -1,3 +1,4 @@
+import type { RequestEvent } from '@sveltejs/kit';
 import { GoogleGenAI } from '@google/genai';
 import { file as tempFile, type FileResult } from 'tmp-promise';
 import { createWriteStream } from 'fs';
@@ -110,8 +111,16 @@ async function generateTranscriptWithModel(
 	return response;
 }
 
+function extractClientIp(request: Request, event: RequestEvent): string {
+	return (
+		request.headers.get('fly-client-ip') ||
+		request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+		event.getClientAddress()
+	);
+}
+
 export async function GET(event) {
-	const ip = event.getClientAddress();
+	const ip = extractClientIp(event.request, event);
 	const { allowed, record } = checkRateLimit(ip);
 
 	if (!allowed) {
@@ -124,8 +133,13 @@ export async function GET(event) {
 }
 
 export async function POST(event) {
-	const ip = event.getClientAddress();
-	const { request } = event;
+	const { request, url } = event;
+	const ip = extractClientIp(request, event);
+
+	const origin = request.headers.get('origin');
+	if (origin && new URL(origin).origin !== url.origin) {
+		return new Response('Forbidden', { status: 403 });
+	}
 
 	const { allowed, record } = checkRateLimit(ip);
 	if (!allowed) {

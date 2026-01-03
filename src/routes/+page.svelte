@@ -144,62 +144,68 @@
 		formData.append('file', selectedFile);
 		formData.append('language', language);
 
-		const response = await fetch('/api/upload', {
-			method: 'POST',
-			body: formData,
-			headers: {
-				Connection: 'keep-alive'
-			}
-		});
-
-		const idHeader = response.headers.get('X-Usage-Id');
-		if (idHeader) {
-			usageId = parseInt(idHeader);
-		}
-
-		if (!response.ok) {
-			errorMessage = await response.text();
-			isUploading = false;
-			return;
-		}
-
-		const reader = response.body?.getReader();
-		if (!reader) {
-			throw new Error('Response body is missing');
-		}
-
-		const decoder = new TextDecoder();
-
 		try {
-			while (true) {
-				const { done, value } = await reader.read();
+			const response = await fetch('/api/upload', {
+				method: 'POST',
+				body: formData,
+				headers: {
+					Connection: 'keep-alive'
+				}
+			});
 
-				if (done) {
-					let parsedData;
+			const idHeader = response.headers.get('X-Usage-Id');
+			if (idHeader) {
+				usageId = parseInt(idHeader);
+			}
 
-					try {
-						parsedData = JSON.parse(streamBuffer);
-					} catch (error) {
-						const response = await fetch('/api/fix-json', {
-							method: 'POST',
-							headers: { 'Content-Type': 'text/plain' },
-							body: streamBuffer
-						});
-						parsedData = (await response.json()).formattedJSON;
+			if (!response.ok) {
+				errorMessage = await response.text();
+				isUploading = false;
+				return;
+			}
+
+			const reader = response.body?.getReader();
+			if (!reader) {
+				throw new Error('Response body is missing');
+			}
+
+			const decoder = new TextDecoder();
+
+			try {
+				while (true) {
+					const { done, value } = await reader.read();
+
+					if (done) {
+						let parsedData;
+
+						try {
+							parsedData = JSON.parse(streamBuffer);
+						} catch (error) {
+							const response = await fetch('/api/fix-json', {
+								method: 'POST',
+								headers: { 'Content-Type': 'text/plain' },
+								body: streamBuffer
+							});
+							parsedData = (await response.json()).formattedJSON;
+						}
+
+						transcriptArray = [...parsedData];
+						streamBuffer = '';
+						uploadComplete = true;
+						isUploading = false;
+						break;
 					}
 
-					transcriptArray = [...parsedData];
-					streamBuffer = '';
-					uploadComplete = true;
-					isUploading = false;
-					break;
+					streamBuffer += decoder.decode(value, { stream: true });
+					transcriptArray = parseStreamedJson(streamBuffer);
 				}
-
-				streamBuffer += decoder.decode(value, { stream: true });
-				transcriptArray = parseStreamedJson(streamBuffer);
+			} finally {
+				reader.cancel();
 			}
-		} finally {
-			reader.cancel();
+		} catch (error) {
+			console.error('Network error during upload:', error);
+			errorMessage = 'A network error occurred. Please try again.';
+			isUploading = false;
 		}
 	}
 

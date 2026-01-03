@@ -392,7 +392,7 @@ export async function POST(event) {
 		} catch (error) {
 			console.error('Error during transcription process:', error);
 			return new Response(
-				'Sorry, something went wrong generating the transcript. Please try again later.',
+				'Sorry, something went wrong generating the transcript. This is our fault, not yours! Please try again later.',
 				{ status: 500 }
 			);
 		}

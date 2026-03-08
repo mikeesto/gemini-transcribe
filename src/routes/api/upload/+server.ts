@@ -210,8 +210,6 @@ export async function POST(event) {
 	}
 
 	const fileSizeBytes = contentLength ? parseInt(contentLength) : 0;
-
-	// Convert Web ReadableStream to Node Readable
 	const nodeReadable = Readable.fromWeb(request.body as import('stream/web').ReadableStream);
 
 	let language = 'English';
@@ -219,33 +217,24 @@ export async function POST(event) {
 	let uploadedFilePath: string | null = null;
 	let uploadedFileMime: string | undefined;
 	let tempFileHandle: FileResult | undefined;
-	let durationMs = 0;
 
 	const busboy = Busboy({
-		headers: {
-			'content-type': contentType
-		}
+		headers: { 'content-type': contentType }
 	});
 
 	let fileUploadPromise: Promise<void> | null = null;
 
 	const parsePromise = new Promise<void>((resolve, reject) => {
 		busboy.on('field', (fieldname, value) => {
-			if (fieldname === 'language') {
-				language = value || 'English';
-			}
-			if (fieldname === 'timestamps') {
-				timestamps = value === 'true';
-			}
+			if (fieldname === 'language') language = value || 'English';
+			if (fieldname === 'timestamps') timestamps = value === 'true';
 		});
 
 		busboy.on('file', (fieldname, fileStream, info) => {
-			// Only handle the 'file' field
 			if (fieldname !== 'file') {
-				fileStream.resume(); // discard any other file fields
+				fileStream.resume();
 				return;
 			}
-
 			fileUploadPromise = (async () => {
 				try {
 					tempFileHandle = await tempFile({
@@ -253,7 +242,6 @@ export async function POST(event) {
 					});
 					uploadedFilePath = tempFileHandle.path;
 					uploadedFileMime = info.mimeType;
-
 					await pipeline(fileStream, createWriteStream(tempFileHandle.path));
 				} catch (err) {
 					reject(err);
@@ -263,10 +251,7 @@ export async function POST(event) {
 
 		busboy.on('error', (err) => reject(err));
 		busboy.on('finish', async () => {
-			// Wait for file upload to complete before resolving
-			if (fileUploadPromise) {
-				await fileUploadPromise;
-			}
+			if (fileUploadPromise) await fileUploadPromise;
 			resolve();
 		});
 	});
@@ -290,192 +275,202 @@ export async function POST(event) {
 		return new Response('No file uploaded', { status: 400 });
 	}
 
-	const ai = new GoogleGenAI({ apiKey: env.GOOGLE_API_KEY });
+	const stream = new ReadableStream({
+		async start(controller) {
+			const encoder = new TextEncoder();
+			const sendJson = (obj: Record<string, unknown>) => {
+				controller.enqueue(encoder.encode(JSON.stringify(obj) + '\n'));
+			};
+			const sendText = (text: string) => {
+				controller.enqueue(encoder.encode(text));
+			};
 
-	let uploadResult;
-	let result: AsyncIterableIterator<{ text?: string }> | null = null;
-	let successfulModel = '';
+			const cleanupTempFile = () => {
+				if (tempFileHandle) {
+					try {
+						tempFileHandle.cleanup();
+					} catch (e) {
+						// ignore cleanup errors
+					}
+					tempFileHandle = undefined;
+				}
+			};
 
-	if (env.MOCK_API === 'true') {
-		console.log('--- MOCK MODE: Skipping Google API ---');
+			const sendErrorAndClose = (msg: string) => {
+				sendJson({ error: msg });
+				controller.close();
+				cleanupTempFile();
+			};
 
-		// Simulate a small delay for "uploading"
-		await new Promise((resolve) => setTimeout(resolve, 1000));
+			const ai = new GoogleGenAI({ apiKey: env.GOOGLE_API_KEY });
+			let durationMs = 0;
+			let uploadResult;
+			let successfulModel = '';
 
-		// Use the mock generator
-		result = mockTranscriptGenerator();
-		successfulModel = 'mock-model-v1';
-		durationMs = 15000; // Mock duration: 15 seconds
+			if (env.MOCK_API === 'true') {
+				sendJson({ status: 'Mock mode: Uploading securely...' });
+				await new Promise((resolve) => setTimeout(resolve, 1000));
+				sendJson({ status: 'Mock mode: Processing media...' });
+				await new Promise((resolve) => setTimeout(resolve, 1000));
+				sendJson({ status: 'Mock mode: Generating transcript...' });
 
-		// Cleanup temp file immediately since we aren't sending it
-		if (tempFileHandle) tempFileHandle.cleanup();
-	} else {
-		// --- REAL API MODE ---
-		try {
+				for await (const chunk of mockTranscriptGenerator()) {
+					if (chunk.text) sendText(chunk.text);
+				}
+
+				cleanupTempFile();
+				try {
+					const id = logUsage(fileSizeBytes, 'mock-model-v1', 15000);
+					sendJson({ usageId: Number(id) });
+				} catch (e) {
+					// ignore
+				}
+
+				controller.close();
+				return;
+			}
+
 			try {
-				durationMs = await getMediaDuration(uploadedFilePath);
-
-				// Check if duration exceeds the limit
-				if (durationMs > MAX_MEDIA_DURATION_MS) {
-					const minutes = Math.round(durationMs / 60000);
-					return new Response(
-						`File is too long (${minutes} minutes). The model currently only supports up to 2 hours of audio per file.`,
-						{ status: 400 }
-					);
-				}
-			} catch (durationError) {
-				console.warn('Could not extract media duration:', durationError);
-				// Continue without duration - not critical
-			}
-
-			uploadResult = await ai.files.upload({
-				file: uploadedFilePath,
-				config: {
-					mimeType: uploadedFileMime
-				}
-			});
-		} catch (error) {
-			console.error(error);
-			return new Response('Error uploading file', { status: 500 });
-		} finally {
-			if (tempFileHandle) {
-				tempFileHandle.cleanup();
-			}
-		}
-
-		try {
-			// Poll until the file is processed
-			let uploadedFile = await ai.files.get({ name: uploadResult.name! });
-
-			let retries = 0;
-			const maxRetries = 3;
-			const initialRetryDelay = 1000;
-
-			while (uploadedFile.state === 'PROCESSING') {
-				console.log('File is processing... waiting 5 seconds before next poll.');
-				await new Promise((resolve) => setTimeout(resolve, 5000));
+				sendJson({
+					status: 'Uploading securely... (this can take a few minutes for larger files)'
+				});
 
 				try {
-					uploadedFile = await ai.files.get({ name: uploadResult.name! });
-					retries = 0;
-				} catch (error) {
-					if (error instanceof Error && error.message.includes('500 Internal Server Error')) {
-						retries++;
-						if (retries > maxRetries) {
-							console.error(`Transcription API failed after ${maxRetries} retries.`, error);
-							throw new Error(
-								'Transcription API is currently unavailable. Please try again later.'
-							);
-						}
-
-						const delay = initialRetryDelay * Math.pow(2, retries - 1);
-						console.warn(
-							`Transcription API error during polling, retrying in ${delay}ms... (Attempt ${retries}/${maxRetries})`
+					durationMs = await getMediaDuration(uploadedFilePath!);
+					if (durationMs > MAX_MEDIA_DURATION_MS) {
+						const minutes = Math.round(durationMs / 60000);
+						return sendErrorAndClose(
+							`File is too long (${minutes} minutes). The model currently only supports up to 2 hours of audio per file.`
 						);
-						await new Promise((resolve) => setTimeout(resolve, delay));
-						continue;
-					} else {
-						console.error('Unhandled error during file polling:', error);
-						throw error;
+					}
+				} catch (durationError) {
+					console.warn('Could not extract media duration:', durationError);
+				}
+
+				uploadResult = await ai.files.upload({
+					file: uploadedFilePath!,
+					config: { mimeType: uploadedFileMime }
+				});
+
+				cleanupTempFile();
+
+				sendJson({
+					status: 'Processing media (this can take a few minutes for larger files)...'
+				});
+
+				let uploadedFile = await ai.files.get({ name: uploadResult.name! });
+				let retries = 0;
+				const maxRetries = 3;
+				const initialRetryDelay = 1000;
+				let secondsWaiting = 0;
+
+				while (uploadedFile.state === 'PROCESSING') {
+					await new Promise((resolve) => setTimeout(resolve, 5000));
+					secondsWaiting += 5;
+
+					sendJson({ status: `Processing media... (${secondsWaiting}s elapsed)` });
+
+					try {
+						uploadedFile = await ai.files.get({ name: uploadResult.name! });
+						retries = 0;
+					} catch (error) {
+						if (error instanceof Error && error.message.includes('500 Internal Server Error')) {
+							retries++;
+							if (retries > maxRetries) {
+								return sendErrorAndClose(
+									'Transcription API is currently unavailable. Please try again later.'
+								);
+							}
+							const delay = initialRetryDelay * Math.pow(2, retries - 1);
+							await new Promise((resolve) => setTimeout(resolve, delay));
+						} else {
+							throw error;
+						}
 					}
 				}
-			}
 
-			if (uploadedFile.state === 'FAILED') {
-				console.error('File processing failed for:', uploadedFile);
-				return new Response(
-					"Unfortunately this file couldn't be processed. The file may be corrupt or in an unsupported format.",
-					{ status: 500 }
+				if (uploadedFile.state === 'FAILED') {
+					return sendErrorAndClose(
+						"Unfortunately this file couldn't be processed. The file may be corrupt or in an unsupported format."
+					);
+				}
+
+				sendJson({ status: 'Transcribing audio... this could take a while!' });
+
+				const models = [
+					'gemini-3-flash-preview',
+					'gemini-2.5-flash',
+					'gemini-3.1-flash-lite-preview',
+					'gemini-2.5-flash-lite-preview-09-2025'
+				];
+
+				let result = null;
+				let lastError = null;
+
+				for (const model of models) {
+					try {
+						console.log(`Attempting transcription with ${model}`);
+						result = await generateTranscriptWithModel(
+							ai,
+							model,
+							uploadedFile.uri!,
+							uploadedFileMime!,
+							language,
+							timestamps
+						);
+						successfulModel = model;
+						break;
+					} catch (error) {
+						lastError = error;
+						if (
+							error instanceof Error &&
+							(error.message.includes('429') ||
+								error.message.includes('rate limit') ||
+								error.message.includes('503'))
+						) {
+							console.warn(`Model ${model} unavailable or rate limited, trying next...`);
+						} else {
+							throw error;
+						}
+					}
+				}
+
+				if (!result) throw lastError || new Error('All transcription models failed');
+
+				for await (const text of streamChunks(result)) {
+					if (text) sendText(text);
+				}
+
+				try {
+					const usageId = logUsage(fileSizeBytes, successfulModel, durationMs);
+					sendJson({ usageId: Number(usageId) });
+				} catch (dbError) {
+					console.error('Error logging usage to database:', dbError);
+				}
+
+				if (uploadResult && uploadResult.name) {
+					try {
+						await ai.files.delete({ name: uploadResult.name });
+					} catch (error) {
+						// ignore deletion errors
+					}
+				}
+
+				controller.close();
+			} catch (err) {
+				console.error('Error during streaming:', err);
+				sendErrorAndClose(
+					'Sorry, something went wrong generating the transcript. Please try again later.'
 				);
 			}
-
-			if (!uploadedFile.uri) {
-				console.error('Uploaded file URI is undefined');
-				return new Response('File upload incomplete, URI not available', { status: 500 });
-			}
-
-			const models = [
-				'gemini-3-flash-preview',
-				'gemini-2.5-flash',
-				'gemini-3.1-flash-lite-preview',
-				'gemini-2.5-flash-lite-preview-09-2025'
-			];
-
-			let lastError: Error | null = null;
-
-			for (const model of models) {
-				try {
-					console.log(`Attempting transcription with ${model}`);
-					result = await generateTranscriptWithModel(
-						ai,
-						model,
-						uploadedFile.uri,
-						uploadedFileMime,
-						language,
-						timestamps
-					);
-					successfulModel = model;
-					break;
-				} catch (error) {
-					lastError = error as Error;
-					if (
-						error instanceof Error &&
-						(error.message.includes('429') ||
-							error.message.includes('rate limit') ||
-							error.message.includes('503'))
-					) {
-						console.warn(`Model ${model} unavailable or rate limited, trying next model...`);
-					} else {
-						throw error; // Non-rate-limit error, don't retry
-					}
-				}
-			}
-
-			if (!result) {
-				throw lastError || new Error('All transcription models failed');
-			}
-		} catch (error) {
-			console.error('Error during transcription process:', error);
-			return new Response(
-				'Sorry, something went wrong generating the transcript. This is our fault, not yours! Please try again later.',
-				{ status: 500 }
-			);
 		}
-	}
+	});
 
-	if (!result) {
-		return new Response('Error generating transcript', { status: 500 });
-	}
-
-	let usageId: number | bigint = 0;
-
-	// Log usage to the database
-	try {
-		usageId = logUsage(fileSizeBytes, successfulModel, durationMs);
-	} catch (dbError) {
-		console.error('Error logging usage to database:', dbError);
-		// Proceed without failing the request
-	}
-
-	// Delete the file from Google (only if we uploaded it)
-	if (env.MOCK_API !== 'true' && uploadResult && uploadResult.name) {
-		try {
-			await ai.files.delete({ name: uploadResult.name });
-		} catch (error) {
-			console.error('Error deleting uploaded file:', error);
-			// Don't throw - still return the transcription even if deletion fails
-		}
-	}
-
-	const nodeStream = Readable.from(streamChunks(result));
-	const webStream = Readable.toWeb(nodeStream) as ReadableStream<Uint8Array>;
-
-	return new Response(webStream, {
+	return new Response(stream, {
 		headers: {
 			'Content-Type': 'text/plain',
 			'Transfer-Encoding': 'chunked',
-			'X-Content-Type-Options': 'nosniff',
-			'X-Usage-Id': usageId.toString()
+			'X-Content-Type-Options': 'nosniff'
 		}
 	});
 }

@@ -23,6 +23,7 @@
 
 	let usageId = $state<number | null>(null);
 	let rating = $state<number | null>(null); // 1 for up, -1 for down
+	let currentStatus = $state('Preparing upload...');
 
 	onMount(() => {
 		language = localStorage.getItem('transcriptionLanguage') || 'English';
@@ -83,35 +84,40 @@
 	function parseStreamedJson(
 		buffer: string
 	): Array<{ start: number; speaker: string; text: string }> {
-		const objectStrings = buffer.match(/{[^}]*}/g);
+		const objectStrings = buffer.match(/\{[^}]*\}/g);
 		if (!objectStrings) {
 			return [];
 		}
 
-		return objectStrings
-			.map((objStr) => {
-				try {
-					const parsed = JSON.parse(objStr);
-					if (
-						parsed &&
-						typeof parsed.start === 'number' &&
-						typeof parsed.speaker === 'string' &&
-						typeof parsed.text === 'string'
-					) {
-						return parsed;
-					}
-					return null;
-				} catch (e) {
-					console.warn('Failed to parse JSON chunk:', objStr, e);
-					return null;
+		const validEntries: Array<{ start: number; speaker: string; text: string }> = [];
+
+		for (const objStr of objectStrings) {
+			try {
+				const parsed = JSON.parse(objStr);
+				if (parsed.error) {
+					errorMessage = parsed.error;
+				} else if (parsed.status) {
+					currentStatus = parsed.status;
+				} else if (parsed.usageId !== undefined) {
+					usageId = parsed.usageId;
+				} else if (
+					parsed &&
+					typeof parsed.speaker === 'string' &&
+					typeof parsed.text === 'string'
+				) {
+					validEntries.push(parsed);
 				}
-			})
-			.filter((entry): entry is { start: number; speaker: string; text: string } => !!entry);
+			} catch (e) {
+				// ignore malformed mid-stream chunks
+			}
+		}
+		return validEntries;
 	}
 
 	async function handleSubmit() {
 		if (!selectedFile) return;
 		errorMessage = null;
+		currentStatus = 'Preparing upload...';
 
 		if (selectedFile.size >= 268435456) {
 			alert('This file is too large. Please select a file that is less than 256MB.');
@@ -166,11 +172,6 @@
 				}
 			});
 
-			const idHeader = response.headers.get('X-Usage-Id');
-			if (idHeader) {
-				usageId = parseInt(idHeader);
-			}
-
 			if (!response.ok) {
 				errorMessage = await response.text();
 				isUploading = false;
@@ -189,15 +190,32 @@
 					const { done, value } = await reader.read();
 
 					if (done) {
-						transcriptArray = JSON.parse(streamBuffer);
-						streamBuffer = '';
-						uploadComplete = true;
+						if (!errorMessage) {
+							try {
+								const arrayStart = streamBuffer.indexOf('[');
+								const arrayEnd = streamBuffer.lastIndexOf(']');
+								if (arrayStart !== -1 && arrayEnd !== -1) {
+									const jsonArray = streamBuffer.substring(arrayStart, arrayEnd + 1);
+									transcriptArray = JSON.parse(jsonArray);
+								}
+							} catch (e) {
+								console.warn('Final JSON parse failed, relying on chunked parsing');
+							}
+							uploadComplete = true;
+						}
 						isUploading = false;
+						streamBuffer = '';
 						break;
 					}
 
 					streamBuffer += decoder.decode(value, { stream: true });
 					transcriptArray = parseStreamedJson(streamBuffer);
+
+					if (errorMessage) {
+						reader.cancel();
+						isUploading = false;
+						break;
+					}
 				}
 			} finally {
 				reader.cancel();
@@ -268,6 +286,7 @@
 		errorMessage = null;
 		usageId = null;
 		rating = null;
+		currentStatus = 'Preparing upload...';
 		if (audioElement) {
 			audioElement.currentTime = 0;
 			audioElement.pause();
@@ -626,7 +645,7 @@
 							<div class="text-center">
 								<div class="inline-flex items-center gap-2 text-sm text-slate-600">
 									<svg
-										class="h-4 w-4 animate-spin"
+										class="h-4 w-4 animate-spin text-indigo-600"
 										fill="none"
 										stroke="currentColor"
 										viewBox="0 0 24 24"
@@ -638,7 +657,7 @@
 											d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
 										/>
 									</svg>
-									<span>Processing your file... This may take a few minutes</span>
+									<span class="font-medium">{currentStatus}</span>
 								</div>
 							</div>
 						{:else}

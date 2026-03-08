@@ -145,7 +145,10 @@ export async function GET(event) {
 	const { allowed, record } = checkRateLimit(ip);
 
 	if (!allowed) {
-		return new Response('Rate limit exceeded', { status: 429 });
+		return new Response(
+			'This free service supports up to 10 requests per user per day. Please try again tomorrow.',
+			{ status: 429 }
+		);
 	}
 
 	return new Response(JSON.stringify({ remaining: RATE_LIMIT - (record?.count || 0) }), {

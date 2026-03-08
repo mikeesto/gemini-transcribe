@@ -142,12 +142,7 @@
 		try {
 			const check = await fetch('/api/upload');
 			if (!check.ok) {
-				if (check.status === 429) {
-					errorMessage =
-						'This free service supports up to 5 requests per user per day. Please try again tomorrow.';
-				} else {
-					errorMessage = 'Service temporarily unavailable.';
-				}
+				errorMessage = await check.text() || 'Service temporarily unavailable.';
 				isUploading = false;
 				return;
 			}

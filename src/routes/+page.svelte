@@ -348,17 +348,15 @@
 						{/if}
 					</div>
 
-					<!-- Download Actions -->
-					<div
-						class="mt-6 flex flex-col gap-4 border-t border-slate-100 pt-6 sm:flex-row sm:items-center sm:justify-between"
-					>
-						<!-- Left Side: Export Tools -->
-						<div class="flex flex-wrap items-center gap-2">
+					<!-- Actions -->
+					<div class="mt-6 space-y-4 border-t border-slate-100 pt-6">
+						<!-- Top Row: Rating + New Transcription -->
+						<div class="flex items-center justify-between">
 							<!-- Rating -->
 							{#if usageId}
-								<div class="mr-4 flex items-center gap-1 border-r border-slate-200 pr-4">
-									<span class="mr-2 hidden text-xs font-medium text-slate-500 sm:inline"
-										>Quality:</span
+								<div class="flex items-center gap-1">
+									<span class="mr-1 text-xs font-medium text-slate-500"
+										>Rate this transcript</span
 									>
 
 									<button
@@ -409,9 +407,28 @@
 										</svg>
 									</button>
 								</div>
+							{:else}
+								<div></div>
 							{/if}
-							<!-- Rating End -->
 
+							<button
+								onclick={reset}
+								class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
+							>
+								<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M12 4v16m8-8H4"
+									/>
+								</svg>
+								<span>New transcription</span>
+							</button>
+						</div>
+
+						<!-- Bottom Row: Export Buttons -->
+						<div class="flex flex-wrap items-center gap-2">
 							<button
 								onclick={copyToClipboard}
 								class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
@@ -477,24 +494,6 @@
 									/>
 								</svg>
 								<span>.txt (no timestamps)</span>
-							</button>
-						</div>
-
-						<!-- Right Side: Primary Action -->
-						<div>
-							<button
-								onclick={reset}
-								class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
-							>
-								<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M12 4v16m8-8H4"
-									/>
-								</svg>
-								<span>New transcription</span>
 							</button>
 						</div>
 					</div>

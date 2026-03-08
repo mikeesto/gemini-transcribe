@@ -15,6 +15,7 @@
 	let language = $state('English');
 	let initialized = $state(false);
 	let errorMessage = $state<string | null>(null);
+	let includeTimestamps = $state(false);
 
 	let audioElement = $state<HTMLAudioElement | null>(null);
 	let videoElement = $state<HTMLVideoElement | null>(null);
@@ -142,7 +143,7 @@
 		try {
 			const check = await fetch('/api/upload');
 			if (!check.ok) {
-				errorMessage = await check.text() || 'Service temporarily unavailable.';
+				errorMessage = (await check.text()) || 'Service temporarily unavailable.';
 				isUploading = false;
 				return;
 			}
@@ -154,6 +155,7 @@
 		const formData = new FormData();
 		formData.append('file', selectedFile);
 		formData.append('language', language);
+		formData.append('timestamps', includeTimestamps ? 'true' : 'false');
 
 		try {
 			const response = await fetch('/api/upload', {
@@ -287,7 +289,11 @@
 
 	async function copyToClipboard() {
 		const text = transcriptArray
-			.map((entry) => `[${formatTimestamp(entry.start)}] ${entry.speaker}: ${entry.text}`)
+			.map((entry) =>
+				includeTimestamps && entry.start != null
+					? `[${formatTimestamp(entry.start)}] ${entry.speaker}: ${entry.text}`
+					: `${entry.speaker}: ${entry.text}`
+			)
 			.join('\n');
 		await navigator.clipboard.writeText(text);
 		copiedToClipboard = true;
@@ -431,7 +437,7 @@
 							</button>
 
 							<button
-								onclick={() => downloadTranscript()}
+								onclick={() => downloadTranscript({ timestamps: includeTimestamps })}
 								class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
 							>
 								<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -445,35 +451,37 @@
 								<span>.txt</span>
 							</button>
 
-							<button
-								onclick={downloadSRT}
-								class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
-							>
-								<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-									/>
-								</svg>
-								<span>.srt</span>
-							</button>
+							{#if includeTimestamps}
+								<button
+									onclick={downloadSRT}
+									class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
+								>
+									<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+										/>
+									</svg>
+									<span>.srt</span>
+								</button>
 
-							<button
-								onclick={() => downloadTranscript({ timestamps: false })}
-								class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
-							>
-								<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-									/>
-								</svg>
-								<span>.txt (no timestamps)</span>
-							</button>
+								<button
+									onclick={() => downloadTranscript({ timestamps: false })}
+									class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
+								>
+									<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+										/>
+									</svg>
+									<span>.txt (no timestamps)</span>
+								</button>
+							{/if}
 						</div>
 					</div>
 				</div>
@@ -535,6 +543,19 @@
 								placeholder="Enter language (e.g., English, Spanish)"
 								class="w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-slate-800 placeholder-slate-400 transition-colors focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
 							/>
+						</div>
+
+						<div class="flex items-start gap-3">
+							<input
+								type="checkbox"
+								bind:checked={includeTimestamps}
+								id="timestamps"
+								class="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+							/>
+							<label for="timestamps" class="text-sm text-slate-700">
+								Include timestamps
+								<span class="text-xs text-slate-500">(experimental)</span>
+							</label>
 						</div>
 
 						{#if errorMessage}
@@ -647,7 +668,9 @@
 				<div class="space-y-3">
 					<div class="mb-4 flex items-center justify-between">
 						<h3 class="text-lg font-semibold text-slate-900">Transcript</h3>
-						<p class="text-sm text-slate-500">Click timestamps to jump to that moment</p>
+						{#if includeTimestamps}
+							<p class="text-sm text-slate-500">Click timestamps to jump to that moment</p>
+						{/if}
 					</div>
 
 					{#each transcriptArray as entry, i (i)}
@@ -656,12 +679,14 @@
 						>
 							<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-4">
 								<div class="flex items-center gap-2">
-									<button
-										class="cursor-pointer rounded bg-slate-100 px-2 py-1 font-mono text-sm text-slate-700 transition-colors hover:bg-slate-200"
-										onclick={() => handleTimestampClick(entry.start)}
-									>
-										{formatTimestamp(entry.start)}
-									</button>
+									{#if includeTimestamps && entry.start != null}
+										<button
+											class="cursor-pointer rounded bg-slate-100 px-2 py-1 font-mono text-sm text-slate-700 transition-colors hover:bg-slate-200"
+											onclick={() => handleTimestampClick(entry.start)}
+										>
+											{formatTimestamp(entry.start)}
+										</button>
+									{/if}
 									<span
 										class="rounded-full bg-slate-100 px-2.5 py-0.5 text-sm font-medium text-slate-600"
 									>

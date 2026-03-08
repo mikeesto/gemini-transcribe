@@ -81,8 +81,36 @@ async function generateTranscriptWithModel(
 	modelName: string,
 	fileUri: string,
 	mimeType: string,
-	language: string
+	language: string,
+	timestamps: boolean
 ) {
+	const prompt = timestamps
+		? `Generate a transcript in ${language} for this file. Group similar text together rather than timestamping every line.`
+		: `Generate a transcript in ${language} for this file. Group similar text together by speaker.`;
+
+	const properties: Record<string, object> = {
+		speaker: {
+			type: Type.STRING,
+			description: 'Speaker identifier (e.g. "Speaker 1")'
+		},
+		text: {
+			type: Type.STRING,
+			description: 'Transcribed text for this segment'
+		}
+	};
+
+	const required = ['speaker', 'text'];
+	const propertyOrdering = ['speaker', 'text'];
+
+	if (timestamps) {
+		properties.start = {
+			type: Type.NUMBER,
+			description: 'Start time of this segment in seconds (e.g. 12.4)'
+		};
+		required.push('start');
+		propertyOrdering.splice(1, 0, 'start');
+	}
+
 	const response = await ai.models.generateContentStream({
 		model: modelName,
 		contents: [
@@ -96,7 +124,7 @@ async function generateTranscriptWithModel(
 						}
 					},
 					{
-						text: `Generate a transcript in ${language} for this file. Group similar text together rather than timestamping every line.`
+						text: prompt
 					}
 				]
 			}
@@ -108,22 +136,9 @@ async function generateTranscriptWithModel(
 				type: Type.ARRAY,
 				items: {
 					type: Type.OBJECT,
-					properties: {
-						speaker: {
-							type: Type.STRING,
-							description: 'Speaker identifier (e.g. "Speaker 1")'
-						},
-						start: {
-							type: Type.NUMBER,
-							description: 'Start time of this segment in seconds (e.g. 12.4)'
-						},
-						text: {
-							type: Type.STRING,
-							description: 'Transcribed text for this segment'
-						}
-					},
-					required: ['speaker', 'start', 'text'],
-					propertyOrdering: ['speaker', 'start', 'text']
+					properties,
+					required,
+					propertyOrdering
 				}
 			}
 		}
@@ -200,6 +215,7 @@ export async function POST(event) {
 	const nodeReadable = Readable.fromWeb(request.body as import('stream/web').ReadableStream);
 
 	let language = 'English';
+	let timestamps = false;
 	let uploadedFilePath: string | null = null;
 	let uploadedFileMime: string | undefined;
 	let tempFileHandle: FileResult | undefined;
@@ -217,6 +233,9 @@ export async function POST(event) {
 		busboy.on('field', (fieldname, value) => {
 			if (fieldname === 'language') {
 				language = value || 'English';
+			}
+			if (fieldname === 'timestamps') {
+				timestamps = value === 'true';
 			}
 		});
 
@@ -392,7 +411,8 @@ export async function POST(event) {
 						model,
 						uploadedFile.uri,
 						uploadedFileMime,
-						language
+						language,
+						timestamps
 					);
 					successfulModel = model;
 					break;

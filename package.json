@@ -39,7 +39,6 @@
 		"@types/busboy": "^1.5.4",
 		"better-sqlite3": "^12.5.0",
 		"busboy": "^1.6.0",
-		"jsonrepair": "^3.9.0",
 		"music-metadata": "^11.10.3",
 		"tmp-promise": "^3.0.3"
 	}

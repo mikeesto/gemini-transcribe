@@ -4,13 +4,16 @@ export async function POST({ request }) {
 
 	if (timestamps) {
 		formattedTranscript = transcript
-			.map((entry) => {
-				return `[${entry.timestamp}]\n[${entry.speaker}]\n${entry.text}`;
+			.map((entry: { start: number; speaker: string; text: string }) => {
+				const mins = Math.floor(entry.start / 60);
+				const secs = Math.floor(entry.start % 60);
+				const ts = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+				return `[${ts}]\n[${entry.speaker}]\n${entry.text}`;
 			})
 			.join('\n\n');
 	} else {
 		formattedTranscript = transcript
-			.map((entry) => {
+			.map((entry: { speaker: string; text: string }) => {
 				return `[${entry.speaker}]\n${entry.text}`;
 			})
 			.join('\n\n');

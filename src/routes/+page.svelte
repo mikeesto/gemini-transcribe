@@ -11,7 +11,7 @@
 	let fileType = $state<'audio' | 'video'>('audio');
 
 	let streamBuffer = $state('');
-	let transcriptArray = $state<Array<{ timestamp: string; speaker: string; text: string }>>([]);
+	let transcriptArray = $state<Array<{ start: number; speaker: string; text: string }>>([]);
 	let language = $state('English');
 	let initialized = $state(false);
 	let errorMessage = $state<string | null>(null);
@@ -34,23 +34,20 @@
 		}
 	});
 
-	function handleTimestampClick(timestamp: string) {
-		const parts = timestamp.split(':').map(Number);
-		let timeInSeconds = 0;
+	function formatTimestamp(seconds: number): string {
+		const mins = Math.floor(seconds / 60);
+		const secs = Math.floor(seconds % 60);
+		return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+	}
 
-		if (parts.length === 3) {
-			timeInSeconds = parts[0] * 3600 + parts[1] * 60 + parts[2]; // hh:mm:ss
-		} else if (parts.length === 2) {
-			timeInSeconds = parts[0] * 60 + parts[1]; // mm:ss
-		}
-
+	function handleTimestampClick(startSeconds: number) {
 		if (audioElement) {
-			audioElement.currentTime = timeInSeconds;
+			audioElement.currentTime = startSeconds;
 			audioElement.play();
 		}
 
 		if (videoElement) {
-			videoElement.currentTime = timeInSeconds;
+			videoElement.currentTime = startSeconds;
 			videoElement.play();
 		}
 	}
@@ -84,7 +81,7 @@
 
 	function parseStreamedJson(
 		buffer: string
-	): Array<{ timestamp: string; speaker: string; text: string }> {
+	): Array<{ start: number; speaker: string; text: string }> {
 		const objectStrings = buffer.match(/{[^}]*}/g);
 		if (!objectStrings) {
 			return [];
@@ -96,7 +93,7 @@
 					const parsed = JSON.parse(objStr);
 					if (
 						parsed &&
-						typeof parsed.timestamp === 'string' &&
+						typeof parsed.start === 'number' &&
 						typeof parsed.speaker === 'string' &&
 						typeof parsed.text === 'string'
 					) {
@@ -104,10 +101,11 @@
 					}
 					return null;
 				} catch (e) {
+					console.warn('Failed to parse JSON chunk:', objStr, e);
 					return null;
 				}
 			})
-			.filter((entry): entry is { timestamp: string; speaker: string; text: string } => !!entry);
+			.filter((entry): entry is { start: number; speaker: string; text: string } => !!entry);
 	}
 
 	async function handleSubmit() {
@@ -154,6 +152,7 @@
 				return;
 			}
 		} catch (e) {
+			console.warn('Failed to check rate limit', e);
 			console.warn('Rate limit check failed, attempting upload anyway...');
 		}
 
@@ -193,20 +192,7 @@
 					const { done, value } = await reader.read();
 
 					if (done) {
-						let parsedData;
-
-						try {
-							parsedData = JSON.parse(streamBuffer);
-						} catch (error) {
-							const response = await fetch('/api/fix-json', {
-								method: 'POST',
-								headers: { 'Content-Type': 'text/plain' },
-								body: streamBuffer
-							});
-							parsedData = (await response.json()).formattedJSON;
-						}
-
-						transcriptArray = [...parsedData];
+						transcriptArray = JSON.parse(streamBuffer);
 						streamBuffer = '';
 						uploadComplete = true;
 						isUploading = false;
@@ -306,7 +292,7 @@
 
 	async function copyToClipboard() {
 		const text = transcriptArray
-			.map((entry) => `[${entry.timestamp}] ${entry.speaker}: ${entry.text}`)
+			.map((entry) => `[${formatTimestamp(entry.start)}] ${entry.speaker}: ${entry.text}`)
 			.join('\n');
 		await navigator.clipboard.writeText(text);
 		copiedToClipboard = true;
@@ -355,9 +341,7 @@
 							<!-- Rating -->
 							{#if usageId}
 								<div class="flex items-center gap-1">
-									<span class="mr-1 text-xs font-medium text-slate-500"
-										>Rate this transcript</span
-									>
+									<span class="mr-1 text-xs font-medium text-slate-500">Rate this transcript</span>
 
 									<button
 										onclick={() => submitRating(1)}
@@ -671,7 +655,7 @@
 						<p class="text-sm text-slate-500">Click timestamps to jump to that moment</p>
 					</div>
 
-					{#each transcriptArray as entry}
+					{#each transcriptArray as entry, i (i)}
 						<div
 							class="rounded-lg border border-slate-200 bg-white p-4 transition-colors hover:bg-slate-50"
 						>
@@ -679,9 +663,9 @@
 								<div class="flex items-center gap-2">
 									<button
 										class="cursor-pointer rounded bg-slate-100 px-2 py-1 font-mono text-sm text-slate-700 transition-colors hover:bg-slate-200"
-										onclick={() => handleTimestampClick(entry.timestamp)}
+										onclick={() => handleTimestampClick(entry.start)}
 									>
-										{entry.timestamp}
+										{formatTimestamp(entry.start)}
 									</button>
 									<span
 										class="rounded-full bg-slate-100 px-2.5 py-0.5 text-sm font-medium text-slate-600"

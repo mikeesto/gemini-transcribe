@@ -1,26 +1,3 @@
-// Helper function to parse "mm:ss" or "hh:mm:ss" string into total seconds (number)
-function parseTimeToSeconds(timeString: string) {
-	const parts = timeString.split(':').map(Number);
-
-	if (parts.some(isNaN)) {
-		console.warn(`Could not parse numbers from timestamp: "${timeString}".`);
-		return NaN;
-	}
-
-	let seconds = 0;
-	if (parts.length === 3) {
-		seconds = parts[0] * 3600 + parts[1] * 60 + parts[2]; // hh:mm:ss
-	} else if (parts.length === 2) {
-		seconds = parts[0] * 60 + parts[1]; // mm:ss
-	} else {
-		console.warn(
-			`Invalid timestamp format received: "${timeString}". Expected "mm:ss" or "hh:mm:ss".`
-		);
-		return NaN;
-	}
-	return seconds;
-}
-
 // Helper function to format total seconds (number) into HH:MM:SS,ms string
 function formatTime(totalSeconds: number) {
 	const date = new Date(0);
@@ -47,46 +24,22 @@ export async function POST({ request }) {
 			// Skip invalid entries
 			if (
 				typeof entry.text !== 'string' ||
-				typeof entry.timestamp !== 'string' ||
+				typeof entry.start !== 'number' ||
 				typeof entry.speaker !== 'string'
 			) {
 				console.warn(`Skipping entry with missing/invalid fields at index ${i}:`, entry);
 				continue;
 			}
 
-			const startTimeSeconds = parseTimeToSeconds(entry.timestamp);
-
-			// Check if parsing failed
-			if (isNaN(startTimeSeconds)) {
-				console.warn(
-					`Skipping entry due to invalid timestamp format at index ${i}: "${entry.timestamp}"`
-				);
-				continue;
-			}
+			const startTimeSeconds = entry.start;
 
 			// Determine end time
 			let endTimeSeconds;
 			if (i < transcript.length - 1) {
 				const nextEntry = transcript[i + 1];
-				// Check if next entry and its timestamp are valid before parsing
-				if (nextEntry && typeof nextEntry.timestamp === 'string') {
-					const nextStartTimeSeconds = parseTimeToSeconds(nextEntry.timestamp);
-
-					// Check if next timestamp parsed correctly AND is chronologically after current
-					if (!isNaN(nextStartTimeSeconds) && nextStartTimeSeconds > startTimeSeconds) {
-						endTimeSeconds = nextStartTimeSeconds;
-					} else {
-						// Fallback if next timestamp is invalid, fails parsing, or is not later
-						console.warn(
-							`Invalid, out-of-order, or unparsable timestamp for next entry at index ${i + 1} ("${nextEntry.timestamp}"). Using default duration for entry ${i}.`
-						);
-						endTimeSeconds = startTimeSeconds + defaultDuration;
-					}
+				if (nextEntry && typeof nextEntry.start === 'number' && nextEntry.start > startTimeSeconds) {
+					endTimeSeconds = nextEntry.start;
 				} else {
-					// Fallback if next entry or its timestamp field is invalid
-					console.warn(
-						`Invalid next entry or timestamp field at index ${i + 1}. Using default duration for entry ${i}.`
-					);
 					endTimeSeconds = startTimeSeconds + defaultDuration;
 				}
 			} else {
@@ -96,12 +49,10 @@ export async function POST({ request }) {
 			const startTimeFormatted = formatTime(startTimeSeconds);
 			const endTimeFormatted = formatTime(endTimeSeconds);
 
-			const subtitleText = entry.text;
-
 			// Construct the SRT block
 			srtContent += `${i + 1}\n`;
 			srtContent += `${startTimeFormatted} --> ${endTimeFormatted}\n`;
-			srtContent += `${subtitleText}\n\n`;
+			srtContent += `${entry.text}\n\n`;
 		}
 
 		const headers = new Headers();

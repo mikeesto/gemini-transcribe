@@ -1,5 +1,5 @@
 import type { RequestEvent } from '@sveltejs/kit';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, Type } from '@google/genai';
 import { file as tempFile, type FileResult } from 'tmp-promise';
 import { createWriteStream } from 'fs';
 import { pipeline } from 'stream/promises';
@@ -34,21 +34,21 @@ function checkRateLimit(ip: string) {
 async function* mockTranscriptGenerator() {
 	const mockData = [
 		{
-			timestamp: '00:01',
+			start: 1.0,
 			speaker: 'Mock Speaker',
 			text: 'This is a simulated transcript for local development.'
 		},
 		{
-			timestamp: '00:05',
+			start: 5.0,
 			speaker: 'Mock Speaker',
 			text: 'It allows you to test the UI, streaming, and database without hitting the Google API.'
 		},
 		{
-			timestamp: '00:10',
+			start: 10.0,
 			speaker: 'Mock Speaker',
 			text: 'This specific sentence helps test long text wrapping in the frontend component to ensure it looks good.'
 		},
-		{ timestamp: '00:15', speaker: 'Mock Speaker', text: 'End of simulation.' }
+		{ start: 15.0, speaker: 'Mock Speaker', text: 'End of simulation.' }
 	];
 
 	const fullJson = JSON.stringify(mockData);
@@ -96,15 +96,36 @@ async function generateTranscriptWithModel(
 						}
 					},
 					{
-						text: `Generate a transcript in ${language} for this file. Always use the format mm:ss for the time. Group similar text together rather than timestamping every line. Respond with the transcript in the form of this JSON schema:
- [{"timestamp": "00:00", "speaker": "Speaker 1", "text": "Today I will be talking about the importance of AI in the modern world."},{"timestamp": "01:00", "speaker": "Speaker 1", "text": "Has AI has revolutionized the way we live and work?"}]`
+						text: `Generate a transcript in ${language} for this file. Group similar text together rather than timestamping every line.`
 					}
 				]
 			}
 		],
 		config: {
 			safetySettings,
-			responseMimeType: 'application/json'
+			responseMimeType: 'application/json',
+			responseJsonSchema: {
+				type: Type.ARRAY,
+				items: {
+					type: Type.OBJECT,
+					properties: {
+						speaker: {
+							type: Type.STRING,
+							description: 'Speaker identifier (e.g. "Speaker 1")'
+						},
+						start: {
+							type: Type.NUMBER,
+							description: 'Start time of this segment in seconds (e.g. 12.4)'
+						},
+						text: {
+							type: Type.STRING,
+							description: 'Transcribed text for this segment'
+						}
+					},
+					required: ['speaker', 'start', 'text'],
+					propertyOrdering: ['speaker', 'start', 'text']
+				}
+			}
 		}
 	});
 

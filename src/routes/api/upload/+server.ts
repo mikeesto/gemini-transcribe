@@ -11,7 +11,7 @@ import { parseFile } from 'music-metadata';
 import { logUsage } from '$lib/server/db';
 
 const requests = new Map<string, { count: number; expires: number }>();
-const RATE_LIMIT = 5;
+const RATE_LIMIT = 10;
 const DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 const MAX_MEDIA_DURATION_MS = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
 
@@ -144,7 +144,7 @@ export async function POST(event) {
 	const { allowed, record } = checkRateLimit(ip);
 	if (!allowed) {
 		return new Response(
-			'This free service supports up to 5 requests per user per day. Please try again tomorrow.',
+			'This free service supports up to 10 requests per user per day. Please try again tomorrow.',
 			{ status: 429 }
 		);
 	}

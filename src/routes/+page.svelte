@@ -357,7 +357,7 @@
 					<!-- Actions -->
 					<div class="mt-6 space-y-4 border-t border-slate-100 pt-6">
 						<!-- Top Row: Rating + New Transcription -->
-						<div class="flex items-center justify-between">
+						<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 							<!-- Rating -->
 							{#if usageId}
 								<div class="flex items-center gap-1">
@@ -417,7 +417,7 @@
 
 							<button
 								onclick={reset}
-								class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
+								class="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900 sm:w-auto sm:justify-start"
 							>
 								<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path
@@ -432,10 +432,10 @@
 						</div>
 
 						<!-- Bottom Row: Export Buttons -->
-						<div class="flex flex-wrap items-center gap-2">
+						<div class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
 							<button
 								onclick={copyToClipboard}
-								class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
+								class="inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
 							>
 								{#if copiedToClipboard}
 									<svg class="h-4 w-4 text-green-600" fill="currentColor" viewBox="0 0 24 24">
@@ -457,7 +457,7 @@
 
 							<button
 								onclick={() => downloadTranscript({ timestamps: includeTimestamps })}
-								class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
+								class="inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
 							>
 								<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path
@@ -473,7 +473,7 @@
 							{#if includeTimestamps}
 								<button
 									onclick={downloadSRT}
-									class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
+									class="inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
 								>
 									<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 										<path
@@ -488,7 +488,7 @@
 
 								<button
 									onclick={() => downloadTranscript({ timestamps: false })}
-									class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
+									class="inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900"
 								>
 									<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 										<path

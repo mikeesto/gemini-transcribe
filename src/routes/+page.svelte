@@ -107,7 +107,7 @@
 				) {
 					validEntries.push(parsed);
 				}
-			} catch (e) {
+			} catch {
 				// ignore malformed mid-stream chunks
 			}
 		}
@@ -198,7 +198,7 @@
 									const jsonArray = streamBuffer.substring(arrayStart, arrayEnd + 1);
 									transcriptArray = JSON.parse(jsonArray);
 								}
-							} catch (e) {
+							} catch {
 								console.warn('Final JSON parse failed, relying on chunked parsing');
 							}
 							uploadComplete = true;
@@ -738,7 +738,12 @@
 						@mikeesto
 					</a>
 				</p>
-				<p class="mt-1 text-xs">Suggestions or feedback? I'd love to hear from you</p>
+				<p class="mt-1 text-xs">
+					need unlimited & private transcriptions? i also made <a
+						href="https://whimscribe.netlify.app"
+						class="text-indigo-600 hover:text-indigo-800">Whimscribe</a
+					>
+				</p>
 			</div>
 		</div>
 	</footer>

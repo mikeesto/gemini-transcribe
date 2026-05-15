@@ -739,7 +739,7 @@
 					</a>
 				</p>
 				<p class="mt-1 text-xs">
-					need unlimited & private transcriptions? i also made <a
+					Need unlimited & private transcriptions? I also made <a
 						href="https://whimscribe.netlify.app"
 						class="text-indigo-600 hover:text-indigo-800">Whimscribe</a
 					>

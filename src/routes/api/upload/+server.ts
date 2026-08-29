@@ -256,10 +256,8 @@ export async function POST(event) {
 		});
 	});
 
-	nodeReadable.pipe(busboy);
-
 	try {
-		await parsePromise;
+		await Promise.all([parsePromise, pipeline(nodeReadable, busboy)]);
 	} catch (err) {
 		console.error('Error parsing multipart body:', err);
 		record.count--;

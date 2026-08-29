@@ -9,6 +9,7 @@ import { Readable } from 'node:stream';
 import Busboy from 'busboy';
 import { parseFile } from 'music-metadata';
 import { logUsage } from '$lib/server/db';
+import { setTimeout as delay } from 'node:timers/promises';
 
 const requests = new Map<string, { count: number; expires: number }>();
 const RATE_LIMIT = 10;
@@ -31,7 +32,7 @@ function checkRateLimit(ip: string) {
 }
 
 // --- MOCK GENERATOR ---
-async function* mockTranscriptGenerator() {
+async function* mockTranscriptGenerator(signal: AbortSignal) {
 	const mockData = [
 		{
 			start: 1.0,
@@ -56,7 +57,7 @@ async function* mockTranscriptGenerator() {
 	// Simulate streaming behaviour by chopping the JSON string
 	const chunkSize = 10;
 	for (let i = 0; i < fullJson.length; i += chunkSize) {
-		await new Promise((resolve) => setTimeout(resolve, 50)); // Artificial delay
+		await delay(50, undefined, { signal }); // Artificial delay
 		yield { text: fullJson.slice(i, i + chunkSize) };
 	}
 }
@@ -82,7 +83,8 @@ async function generateTranscriptWithModel(
 	fileUri: string,
 	mimeType: string,
 	language: string,
-	timestamps: boolean
+	timestamps: boolean,
+	abortSignal: AbortSignal
 ) {
 	const prompt = timestamps
 		? `Generate a transcript in ${language} for this file. Group similar text together rather than timestamping every line.`
@@ -130,6 +132,7 @@ async function generateTranscriptWithModel(
 			}
 		],
 		config: {
+			abortSignal,
 			safetySettings,
 			responseMimeType: 'application/json',
 			responseJsonSchema: {
@@ -273,21 +276,62 @@ export async function POST(event) {
 		return new Response('No file uploaded', { status: 400 });
 	}
 
+	const abortController = new AbortController();
+	const clientDisconnectedError = new Error('Response stream was cancelled by the client');
+	let clientDisconnected = false;
+	let streamClosed = false;
+
+	const markClientDisconnected = () => {
+		clientDisconnected = true;
+		if (!abortController.signal.aborted) abortController.abort();
+	};
+
+	const isInvalidStreamState = (error: unknown) =>
+		error instanceof TypeError && (error as NodeJS.ErrnoException).code === 'ERR_INVALID_STATE';
+
 	const stream = new ReadableStream({
 		async start(controller) {
 			const encoder = new TextEncoder();
+			const throwIfDisconnected = () => {
+				if (clientDisconnected || streamClosed) throw clientDisconnectedError;
+			};
+			const send = (value: Uint8Array) => {
+				throwIfDisconnected();
+				try {
+					controller.enqueue(value);
+				} catch (error) {
+					if (isInvalidStreamState(error)) {
+						markClientDisconnected();
+						throw clientDisconnectedError;
+					}
+					throw error;
+				}
+			};
 			const sendJson = (obj: Record<string, unknown>) => {
-				controller.enqueue(encoder.encode(JSON.stringify(obj) + '\n'));
+				send(encoder.encode(JSON.stringify(obj) + '\n'));
 			};
 			const sendText = (text: string) => {
-				controller.enqueue(encoder.encode(text));
+				send(encoder.encode(text));
+			};
+			const closeStream = () => {
+				if (clientDisconnected || streamClosed) return;
+				streamClosed = true;
+				try {
+					controller.close();
+				} catch (error) {
+					if (isInvalidStreamState(error)) {
+						markClientDisconnected();
+						return;
+					}
+					throw error;
+				}
 			};
 
 			const cleanupTempFile = () => {
 				if (tempFileHandle) {
 					try {
 						tempFileHandle.cleanup();
-					} catch (e) {
+					} catch {
 						// ignore cleanup errors
 					}
 					tempFileHandle = undefined;
@@ -295,9 +339,12 @@ export async function POST(event) {
 			};
 
 			const sendErrorAndClose = (msg: string) => {
-				sendJson({ error: msg });
-				controller.close();
-				cleanupTempFile();
+				if (clientDisconnected || streamClosed) return;
+				try {
+					sendJson({ error: msg });
+				} finally {
+					closeStream();
+				}
 			};
 
 			const ai = new GoogleGenAI({ apiKey: env.GOOGLE_API_KEY });
@@ -305,30 +352,30 @@ export async function POST(event) {
 			let uploadResult;
 			let successfulModel = '';
 
-			if (env.MOCK_API === 'true') {
-				sendJson({ status: 'Mock mode: Uploading securely...' });
-				await new Promise((resolve) => setTimeout(resolve, 1000));
-				sendJson({ status: 'Mock mode: Processing media...' });
-				await new Promise((resolve) => setTimeout(resolve, 1000));
-				sendJson({ status: 'Mock mode: Generating transcript...' });
-
-				for await (const chunk of mockTranscriptGenerator()) {
-					if (chunk.text) sendText(chunk.text);
-				}
-
-				cleanupTempFile();
-				try {
-					const id = logUsage(fileSizeBytes, 'mock-model-v1', 15000);
-					sendJson({ usageId: Number(id) });
-				} catch (e) {
-					// ignore
-				}
-
-				controller.close();
-				return;
-			}
-
 			try {
+				if (env.MOCK_API === 'true') {
+					sendJson({ status: 'Mock mode: Uploading securely...' });
+					await delay(1000, undefined, { signal: abortController.signal });
+					sendJson({ status: 'Mock mode: Processing media...' });
+					await delay(1000, undefined, { signal: abortController.signal });
+					sendJson({ status: 'Mock mode: Generating transcript...' });
+
+					for await (const chunk of mockTranscriptGenerator(abortController.signal)) {
+						if (chunk.text) sendText(chunk.text);
+					}
+
+					let usageId: number | undefined;
+					try {
+						usageId = Number(logUsage(fileSizeBytes, 'mock-model-v1', 15000));
+					} catch {
+						// Usage logging should not fail an otherwise successful transcription.
+					}
+					if (usageId !== undefined) sendJson({ usageId });
+
+					closeStream();
+					return;
+				}
+
 				sendJson({
 					status: 'Uploading securely... (this can take a few minutes for larger files)'
 				});
@@ -344,10 +391,11 @@ export async function POST(event) {
 				} catch (durationError) {
 					console.warn('Could not extract media duration:', durationError);
 				}
+				throwIfDisconnected();
 
 				uploadResult = await ai.files.upload({
 					file: uploadedFilePath!,
-					config: { mimeType: uploadedFileMime }
+					config: { mimeType: uploadedFileMime, abortSignal: abortController.signal }
 				});
 
 				cleanupTempFile();
@@ -356,20 +404,26 @@ export async function POST(event) {
 					status: 'Processing media (this can take a few minutes for larger files)...'
 				});
 
-				let uploadedFile = await ai.files.get({ name: uploadResult.name! });
+				let uploadedFile = await ai.files.get({
+					name: uploadResult.name!,
+					config: { abortSignal: abortController.signal }
+				});
 				let retries = 0;
 				const maxRetries = 3;
 				const initialRetryDelay = 1000;
 				let secondsWaiting = 0;
 
 				while (uploadedFile.state === 'PROCESSING') {
-					await new Promise((resolve) => setTimeout(resolve, 5000));
+					await delay(5000, undefined, { signal: abortController.signal });
 					secondsWaiting += 5;
 
 					sendJson({ status: `Processing media... (${secondsWaiting}s elapsed)` });
 
 					try {
-						uploadedFile = await ai.files.get({ name: uploadResult.name! });
+						uploadedFile = await ai.files.get({
+							name: uploadResult.name!,
+							config: { abortSignal: abortController.signal }
+						});
 						retries = 0;
 					} catch (error) {
 						if (error instanceof Error && error.message.includes('500 Internal Server Error')) {
@@ -379,8 +433,8 @@ export async function POST(event) {
 									'Transcription API is currently unavailable. Please try again later.'
 								);
 							}
-							const delay = initialRetryDelay * Math.pow(2, retries - 1);
-							await new Promise((resolve) => setTimeout(resolve, delay));
+							const retryDelay = initialRetryDelay * Math.pow(2, retries - 1);
+							await delay(retryDelay, undefined, { signal: abortController.signal });
 						} else {
 							throw error;
 						}
@@ -417,7 +471,8 @@ export async function POST(event) {
 							uploadedFile.uri!,
 							uploadedFileMime!,
 							language,
-							timestamps
+							timestamps,
+							abortController.signal
 						);
 						successfulModel = model;
 						break;
@@ -442,28 +497,39 @@ export async function POST(event) {
 					if (text) sendText(text);
 				}
 
+				let usageId: number | undefined;
 				try {
-					const usageId = logUsage(fileSizeBytes, successfulModel, durationMs);
-					sendJson({ usageId: Number(usageId) });
+					usageId = Number(logUsage(fileSizeBytes, successfulModel, durationMs));
 				} catch (dbError) {
 					console.error('Error logging usage to database:', dbError);
 				}
+				if (usageId !== undefined) sendJson({ usageId });
 
-				if (uploadResult && uploadResult.name) {
+				closeStream();
+			} catch (err) {
+				if (!clientDisconnected && err !== clientDisconnectedError) {
+					console.error('Error during streaming:', err);
 					try {
-						await ai.files.delete({ name: uploadResult.name });
-					} catch (error) {
-						// ignore deletion errors
+						sendErrorAndClose(
+							'Sorry, something went wrong generating the transcript. Please try again later.'
+						);
+					} catch (sendError) {
+						if (!clientDisconnected) console.error('Could not send streaming error:', sendError);
 					}
 				}
-
-				controller.close();
-			} catch (err) {
-				console.error('Error during streaming:', err);
-				sendErrorAndClose(
-					'Sorry, something went wrong generating the transcript. Please try again later.'
-				);
+			} finally {
+				cleanupTempFile();
+				if (uploadResult?.name) {
+					try {
+						await ai.files.delete({ name: uploadResult.name });
+					} catch {
+						// The remote file may already be gone or cleanup may temporarily fail.
+					}
+				}
 			}
+		},
+		cancel() {
+			markClientDisconnected();
 		}
 	});
 

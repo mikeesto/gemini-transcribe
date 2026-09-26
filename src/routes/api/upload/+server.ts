@@ -12,7 +12,7 @@ import { logUsage } from '$lib/server/db';
 import { setTimeout as delay } from 'node:timers/promises';
 
 const requests = new Map<string, { count: number; expires: number }>();
-const RATE_LIMIT = 10;
+const RATE_LIMIT = 15;
 const DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 const MAX_MEDIA_DURATION_MS = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
 
